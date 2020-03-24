@@ -2,8 +2,10 @@ from flask import render_template, flash, redirect, url_for, request
 from app import app, db
 from app.forms import LoginForm, RegistrationForm
 from flask_login import current_user, login_user, logout_user, login_required
-from app.models import User
+from app.models import User, Transactions
 from werkzeug.urls import url_parse
+from werkzeug.utils import secure_filename
+from config import Config
 
 
 @app.route('/')
@@ -49,3 +51,30 @@ def register():
         flash('Congratulations, you are now a registered user!')
         return redirect(url_for('login'))
     return render_template('register.html', title='Register', form=form)
+
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in Config.ALLOWED_EXTENSIONS
+
+@app.route('/upload_file', methods=['GET', 'POST'])
+@login_required
+def upload_file():
+    # TODO: check if a file was already uploaded this session and if they really want to upload again
+    if request.method == 'POST':
+        # check if the post request has the file part
+        if 'file' not in request.files:
+            flash('No file part')
+            return redirect(request.url)
+        file = request.files['file']
+        # if user does not select file, browser also
+        # submit an empty part with filename
+        if file.filename == '':
+            flash('No selected file')
+        if file and allowed_file(file.filename):
+            filename = secure_filename(file.filename)
+            flash('file is ' + file.filename)
+            trans = Transactions(file)
+            print( trans )
+    return render_template('upload_file.html', title='Upload file with budget data')
+
+
+
