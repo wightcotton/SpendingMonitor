@@ -22,3 +22,8 @@ class User(UserMixin, db.Model):
 def load_user(id):
     return User.query.get(int(id))
 
+class Transactions():
+    base_file = ''
+
+    def __init__(self, file):
+        base_file = file
