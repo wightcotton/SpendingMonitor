@@ -1,7 +1,9 @@
 from flask_wtf import FlaskForm
 from wtforms import StringField, PasswordField, BooleanField, SubmitField
 from wtforms.validators import DataRequired, ValidationError, Email, EqualTo
+from flask_wtf.file import FileField, FileRequired, FileAllowed
 from app.models import User
+from config import Config
 
 
 class LoginForm(FlaskForm):
@@ -29,3 +31,5 @@ class RegistrationForm(FlaskForm):
             raise ValidationError('Please use a different email address.')
 
 
+class UploadForm(FlaskForm):
+    file=FileField(validators=[FileRequired(), FileAllowed(Config.ALLOWED_EXTENSIONS, 'unrecognized file type')])
