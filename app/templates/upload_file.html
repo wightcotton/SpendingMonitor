@@ -7,8 +7,10 @@
 </head>
 <body>
     <form method=post enctype=multipart/form-data>
-      <input type=file name=file>
-      <input type=submit value=Upload>
+        {{ form.hidden_tag() }}
+        {{ form.file }}
+        <input type='submit'>
+        <span class="validation_error" style="color: red;">{{ ', '.join(form.file.errors) }}</span>
     </form>
 </body>
 {% endblock %}

@@ -5,4 +5,4 @@ class Config(object):
     SECRET_KEY = os.environ.get('secret_key') or 'you-will-never-guess'
     SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL') or 'sqlite:///' + os.path.join(basedir, 'app.db')
     SQLALCHEMY_TRACK_MODIFICATIONS = False
-    ALLOWED_EXTENSIONS = {'csv', 'xlsx'}
+    ALLOWED_EXTENSIONS = ['csv', 'xlsx']
