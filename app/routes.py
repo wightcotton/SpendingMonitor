@@ -53,6 +53,7 @@ def register():
     return render_template('register.html', title='Register', form=form)
 
 def allowed_file(filename):
+    print(filename)
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in Config.ALLOWED_EXTENSIONS
 
 @app.route('/upload_file', methods=['GET', 'POST'])
@@ -69,7 +70,9 @@ def upload_file():
         # submit an empty part with filename
         if file.filename == '':
             flash('No selected file')
-        if file and allowed_file(file.filename):
+        if file and not allowed_file(file.filename):
+            flash('invalid file type')
+        else:
             filename = secure_filename(file.filename)
             flash('file is ' + file.filename)
             trans = Transactions(file)
