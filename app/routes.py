@@ -19,6 +19,12 @@ def index():
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
+    # for now, just have this user and do not allow people to register but still have to login
+    db.session.query(User).filter(User.username =='bob').delete(synchronize_session=False)
+    default_user = User(username='bob', email='b@b.com')
+    default_user.set_password('time_flies!!!!')
+    db.session.add(default_user)
+    db.session.commit()
     if current_user.is_authenticated:
         return redirect(url_for('index'))
     form = LoginForm()
