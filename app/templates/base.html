@@ -9,6 +9,7 @@
             Monitor Spending:
             <a href="{{ url_for('index') }}">Home</a>
             <a href="{{ url_for('upload_file') }}">Upload file with spending data</a>
+            <a href="{{ url_for('monthly_drill_down') }}">Spending Detail</a>
             {% if current_user.is_anonymous %}
             <a href="{{ url_for('login') }}">Login</a>
             {% else %}
