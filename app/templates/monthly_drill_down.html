@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block title %}Index{% endblock %}
+{% block head %}
+    {{ super() }}
+    <style type="text/css">
+        .important { color: #336699; }
+    </style>
+{% endblock %}
+{% block content %}
+    <p>total for all categories over the last 12 full months</p>
+    <div>
+        period: budget | spending | percent spent<br>
+        last 12 months: {{ '${:,.2f}'.format(past_year[0][0]) }} | {{ '${:,.2f}'.format(past_year[0][1])}} | {{ '{:,.2f}%'.format(past_year[0][2])}}<br>
+        this year so far: {{ '${:,.2f}'.format(past_year[1][0])}} | {{ '${:,.2f}'.format(past_year[1][1])}} | {{ '{:,.2f}%'.format(past_year[1][2])}}<br>
+        last full month: {{ '${:,.2f}'.format(past_year[2][0])}} | {{ '${:,.2f}'.format(past_year[2][1])}} | {{ '{:,.2f}%'.format(past_year[2][2])}}<br>
+        so far this month: {{ '${:,.2f}'.format(past_year[3][0])}} | {{ '${:,.2f}'.format(past_year[3][1])}} | {{ '{:,.2f}%'.format(past_year[3][2])}}<br>
+    </div>
+    <br>
+    <div>
+        {%  for super_category, category_dict in actuals.items() %}
+            <details>
+            <summary>{{ super_category }}</summary>
+                <ul style="list-style: none;">
+                    <li>last 12 months: {{ '${:,.2f}'.format(super_categories[super_category][0][0]) }} | {{ '${:,.2f}'.format(super_categories[super_category][0][1]) }} | {{ '{:,.2f}%'.format(super_categories[super_category][0][2] ) }}</li>
+                    <li>this year so far: {{ '${:,.2f}'.format(super_categories[super_category][1][0])}} | {{ '${:,.2f}'.format(super_categories[super_category][1][1]) }} | {{ '{:,.2f}%'.format(super_categories[super_category][1][2])}}</li>
+                    <li>last full month: {{ '${:,.2f}'.format(super_categories[super_category][2][0])}} | {{ '${:,.2f}'.format(super_categories[super_category][2][1]) }} | {{ '{:,.2f}%'.format(super_categories[super_category][2][2])}}</li>
+                    <li>so far this month: {{ '${:,.2f}'.format(super_categories[super_category][3][0])}} | {{ '${:,.2f}'.format(super_categories[super_category][3][1]) }} | {{ '{:,.2f}%'.format(super_categories[super_category][3][2])}}</li>
+                </ul>
+            {% for category, year_dict  in category_dict.items() %}
+                    <details id="list2">
+                    <summary>{{ category }}<br></summary>
+                    <ul style="list-style: none;">
+                        <li>last 12 months: {{ '${:,.2f}'.format(categories[super_category][category][0][0]) }} | {{ '${:,.2f}'.format(categories[super_category][category][0][1]) }} | {{ '{:,.2f}%'.format(categories[super_category][category][0][2] ) }}</li>
+                        <li>this year so far: {{ '${:,.2f}'.format(categories[super_category][category][1][0])}} | {{ '${:,.2f}'.format(categories[super_category][category][1][1]) }} | {{ '{:,.2f}%'.format(categories[super_category][category][1][2])}}</li>
+                        <li>last full month: {{ '${:,.2f}'.format(categories[super_category][category][2][0])}} | {{ '${:,.2f}'.format(categories[super_category][category][2][1]) }} | {{ '{:,.2f}%'.format(categories[super_category][category][2][2])}}</li>
+                        <li>so far this month: {{ '${:,.2f}'.format(categories[super_category][category][3][0])}} | {{ '${:,.2f}'.format(categories[super_category][category][3][1]) }} | {{ '{:,.2f}%'.format(categories[super_category][category][3][2])}}</li>
+                    </ul>
+                        {% for year, monthly_dict in year_dict.items() %}
+                            <details id="list3">
+                            <summary>{{ year }}<br></summary>
+                            <ul style="list-style: none;">
+                                {% for month, monthly_value in monthly_dict.items() %}
+                                    <details>
+                                    {% set percent_of_budget = monthly_value / budgets[category][2] * 100 if monthly_value > 0 else 0 %}
+                                    <summary>{{ month }} : {{ '${:,.2f}'.format(budgets[category][2]) }} | {{ '${:,.2f}'.format(monthly_value) }} | {{ '{:,.2f}%'.format(percent_of_budget) }}</summary>
+                                    <ul style="list-style: none;">
+                                    {% for tran in transactions[super_category][category][year][month] %}
+                                        <li>{{ tran }}</li>
+                                    {% endfor %}
+                                    </ul>
+                                    </details>
+                                {% endfor %}
+                            </ul>
+                        </details>
+                {% endfor %}
+                </details>
+            {% endfor %}
+            </details>
+        {% endfor %}
+     </div>
+
+{% endblock %}
