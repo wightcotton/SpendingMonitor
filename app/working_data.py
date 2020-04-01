@@ -213,10 +213,11 @@ class Transactions(object):
     def get_trans_full(self):
         return self.trans_df
 
-    def get_trans_for_category_by_month(self, cat, m, y):
-        return self.trans_df.loc[(self.trans_df["Category"] == cat)
-                                 & (self.trans_df["Month"] == m)
-                                 & (self.trans_df["Year"] == y), self.display_columns]
+    def get_category_by_month(self, cat, m, y):
+        ret = []
+        ret.append(self.trans_df.loc[(self.trans_df["Category"] == cat) & (self.trans_df["Month"] == m) & (self.trans_df["Year"] == y), self.display_columns])
+        ret.append(ret[0]["Amount"].sum())
+        return ret
         #return self.trans_df.loc[self.trans_df[(self.trans_df["Category"] == cat) & (self.trans_df["Month"] == m), :]]
 
         # self.trans_df.Category.unique().to_frame()
