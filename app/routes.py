@@ -142,6 +142,7 @@ def monthly_detail():
     category_total = info[1]
     return render_template('monthly_detail.html',
                            file_info=[f.filename, f.timestamp],
+                           category = category,
                            month = month,
                            year= year,
                            category_total = category_total,
