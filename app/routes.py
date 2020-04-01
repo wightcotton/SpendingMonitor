@@ -137,11 +137,14 @@ def monthly_detail():
     category = session['category']
     month = session["month"]
     year = session['year']
-    df = dfact.get_trans().get_trans_for_category_by_month(category,month, year)
+    info = dfact.get_trans().get_category_by_month(category, month, year)
+    df = info[0]
+    category_total = info[1]
     return render_template('monthly_detail.html',
                            file_info=[f.filename, f.timestamp],
                            month = month,
                            year= year,
+                           category_total = category_total,
                            tables=[df.to_html(classes='data')],
                            titles=df.columns.values)
 
