@@ -78,7 +78,7 @@ def allowed_file(filename):
 
 def get_current_file():
     uploaded_files = UploadedFile.query.filter_by(user_id=current_user.id)
-    if uploaded_files is None:
+    if len(uploaded_files) == 0:
         return redirect(url_for('upload_file'))
     #assumes multiple files are returned least recent to most recent...and returns last file uploaded
     return uploaded_files[-1]
