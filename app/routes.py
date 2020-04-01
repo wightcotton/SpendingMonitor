@@ -77,11 +77,11 @@ def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in Config.ALLOWED_EXTENSIONS
 
 def get_current_file():
-    uploaded_files = UploadedFile.query.filter_by(user_id=current_user.id)
-    if len(uploaded_files) == 0:
+    uploaded_file = UploadedFile.query.filter_by(user_id=current_user.id).order_by(UploadedFile.timestamp.desc()).first()
+    if uploaded_file is None:
         return redirect(url_for('upload_file'))
     #assumes multiple files are returned least recent to most recent...and returns last file uploaded
-    return uploaded_files[-1]
+    return uploaded_file
 
 def create_selectfield_choices(choice_list):
     return [(l, l) for l in choice_list]
