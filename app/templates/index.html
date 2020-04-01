@@ -1,5 +1,12 @@
 {% extends "base.html" %}
 
 {% block content %}
-    <h1>Hi, {{ current_user.username }}!</h1>
+    <h3>select category, month and year to see detailed spending</h3>
+    <form action="" method="post" novalidate>
+        {{ form.hidden_tag() }}
+        {{ form.category.label }} {{ form.category }}
+        {{ form.month.label }} {{ form.month }}
+        {{ form.year.label }} {{ form.year }}
+        {{ form.submit }}<br>
+    </form>
 {% endblock %}

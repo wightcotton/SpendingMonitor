@@ -2,16 +2,16 @@ import pandas as pd
 import datetime
 import xlrd
 
-class DataObjectFactory(object):
+class DataObjectFactory_old(object):
 
     def __init__(self, filename, file):
         self.trans = None
         self.budget = None
         if '.csv'in filename:
-            self.trans = Transactions(pd.read_csv(file), None)
+            self.trans = Transactions_old(pd.read_csv(file), None)
         elif '.xlsx' in filename:
-            self.budget = Budget(pd.read_excel(file, "Budget Amounts"))
-            self.trans = Transactions(pd.read_excel(file, "Transactions"), self.budget.budget_info)
+            self.budget = Budget_old(pd.read_excel(file, "Budget Amounts"))
+            self.trans = Transactions_old(pd.read_excel(file, "Transactions"), self.budget.budget_info)
 
     def get_trans_dataframe(self):
         return self.trans
@@ -19,8 +19,7 @@ class DataObjectFactory(object):
     def get_budgets_dataframe(self):
         return self.budget
 
-class Budget(object):
-
+class Budget_old(object):
     def __init__(self, df):
  # load transactions into model.Transactions
     # col   value
@@ -47,10 +46,8 @@ class Budget(object):
         self.budget_info["Total"] = ["Spending", total_annual_budget, total_annual_budget / 12]
 
 
-class Transactions(object):
-
+class Transactions_old(object):
     def __init__(self, df, budget_info):
-
         self.actuals = df
         self.budget_info = budget_info
         #
@@ -81,6 +78,7 @@ class Transactions(object):
         current_month = current_datetime.month
         start_date = datetime.datetime(current_year-1, current_month-1, 1)
         self.actuals['Date'] = pd.to_datetime(self.actuals['Date'])
+        print(self.actuals)
         for index, row in self.actuals.iterrows():
             # read row and only columns we care about: Date, Amount, Transaction Type, Category
             # need to sum or subtract amounts within a category for actuals within period
@@ -112,7 +110,7 @@ class Transactions(object):
                 except KeyError:
  #                   print("KeyError: " + str(row) )
                     pass
-
+            print(self.transactions)
         #
         # build self.accumulated_spending_by_category
         #
@@ -171,3 +169,60 @@ class Transactions(object):
                 for yr, yr_dict in cat_dict.items():
                     for mnth, mnthly_value in yr_dict.items():
                         if mnthly_value  > self.budget_info[cat][2] * 10: self.alerts.append( cat + " for " + str(yr) + ":" + str(mnth) + " " + str(mnthly_value) + " is over 10 times budget (" + str(self.budget_info[cat][2]) + ")!")
+
+
+class DataObjectFactory(object):
+    def __init__(self, filename, file):
+        self.trans = None
+        self.budget = None
+        self.uploaded_filename = filename
+        if '.csv' in filename:
+            self.trans = Transactions(pd.read_csv(file), None)
+        elif '.xlsx' in filename:
+            self.budget = Budget(pd.read_excel(file, "Budget Amounts"))
+            self.trans = Transactions(pd.read_excel(file, "Transactions"))
+
+    def get_trans(self):
+        return self.trans
+
+    def get_budgets(self):
+        return self.budget
+
+
+class Budget(object):
+    def __init__(self, budget_file):
+        self.budget_structure = {}
+
+class Transactions(object):
+    def __init__(self, incoming_df):
+        self.trans_df = incoming_df
+        self.trans_df['Date'] = pd.to_datetime(self.trans_df['Date'])
+        self.trans_df['Year'] = self.trans_df["Date"].dt.strftime('%Y')
+        self.trans_df['Month'] = self.trans_df["Date"].dt.strftime('%B')
+        self.display_columns =["Date", "Description", "Amount"]
+
+    def get_all_categories(self):
+        return sorted(self.trans_df.Category.unique())
+
+    def get_all_months(self):
+        return self.trans_df.Month.unique()
+
+    def get_all_years(self):
+        return sorted(self.trans_df.Year.unique())
+
+    def get_trans_full(self):
+        return self.trans_df
+
+    def get_trans_for_category_by_month(self, cat, m, y):
+        return self.trans_df.loc[(self.trans_df["Category"] == cat)
+                                 & (self.trans_df["Month"] == m)
+                                 & (self.trans_df["Year"] == y), self.display_columns]
+        #return self.trans_df.loc[self.trans_df[(self.trans_df["Category"] == cat) & (self.trans_df["Month"] == m), :]]
+
+        # self.trans_df.Category.unique().to_frame()
+        # selecting columns - df.loc[:, [list of column names]
+        # minimum - df.loc[:, [list of column names].min() or max(), count(), avg(), sum()
+        # selection rows - df.loc[df.[column_name] >= 1000000
+        # group by - df.groupby([column names]).sum()
+        # self.trans_df.column.unique() returns distinct values in column
+
