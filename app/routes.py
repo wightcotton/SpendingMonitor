@@ -15,8 +15,10 @@ from io import BytesIO
 @login_required
 def index():
     form=HomeForm()
-    f = get_current_file()
-    dfact = DataObjectFactory(f.filename, BytesIO(f.data))
+    uploaded_file = UploadedFile.query.filter_by(user_id=current_user.id).order_by(UploadedFile.timestamp.desc()).first()
+    if uploaded_file is None:
+        return redirect(url_for('upload_file'))
+    dfact = DataObjectFactory(uploaded_file.filename, BytesIO(uploaded_file.data))
     form.category.choices = create_selectfield_choices(dfact.get_trans().get_all_categories())
     form.month.choices = create_selectfield_choices(dfact.get_trans().get_all_months())
     form.year.choices = create_selectfield_choices(dfact.get_trans().get_all_years())
@@ -25,7 +27,7 @@ def index():
         session["month"] = form.month.data
         session['year'] = form.year.data
         return redirect(url_for('monthly_detail'))
-    return render_template('index.html', form=form, title='Home', file_info=[f.filename, f.timestamp])
+    return render_template('index.html', form=form, title='Home', file_info=[uploaded_file.filename, uploaded_file.timestamp])
 
 
 @app.route('/login', methods=['GET', 'POST'])
