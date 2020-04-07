@@ -1,6 +1,7 @@
 import pandas as pd
-import datetime
+from datetime import date
 import xlrd
+import numpy as np
 
 class DataObjectFactory_old(object):
 
@@ -170,60 +171,4 @@ class Transactions_old(object):
                     for mnth, mnthly_value in yr_dict.items():
                         if mnthly_value  > self.budget_info[cat][2] * 10: self.alerts.append( cat + " for " + str(yr) + ":" + str(mnth) + " " + str(mnthly_value) + " is over 10 times budget (" + str(self.budget_info[cat][2]) + ")!")
 
-
-class DataObjectFactory(object):
-    def __init__(self, filename, file):
-        self.trans = None
-        self.budget = None
-        self.uploaded_filename = filename
-        if '.csv' in filename:
-            self.trans = Transactions(pd.read_csv(file), None)
-        elif '.xlsx' in filename:
-            self.budget = Budget(pd.read_excel(file, "Budget Amounts"))
-            self.trans = Transactions(pd.read_excel(file, "Transactions"))
-
-    def get_trans(self):
-        return self.trans
-
-    def get_budgets(self):
-        return self.budget
-
-
-class Budget(object):
-    def __init__(self, budget_file):
-        self.budget_structure = {}
-
-class Transactions(object):
-    def __init__(self, incoming_df):
-        self.trans_df = incoming_df
-        self.trans_df['Date'] = pd.to_datetime(self.trans_df['Date'])
-        self.trans_df['Year'] = self.trans_df["Date"].dt.strftime('%Y')
-        self.trans_df['Month'] = self.trans_df["Date"].dt.strftime('%B')
-        self.display_columns =["Date", "Description", "Amount"]
-
-    def get_all_categories(self):
-        return sorted(self.trans_df.Category.unique())
-
-    def get_all_months(self):
-        return self.trans_df.Month.unique()
-
-    def get_all_years(self):
-        return sorted(self.trans_df.Year.unique())
-
-    def get_trans_full(self):
-        return self.trans_df
-
-    def get_category_by_month(self, cat, m, y):
-        ret = []
-        ret.append(self.trans_df.loc[(self.trans_df["Category"] == cat) & (self.trans_df["Month"] == m) & (self.trans_df["Year"] == y), self.display_columns])
-        ret.append(ret[0]["Amount"].sum())
-        return ret
-        #return self.trans_df.loc[self.trans_df[(self.trans_df["Category"] == cat) & (self.trans_df["Month"] == m), :]]
-
-        # self.trans_df.Category.unique().to_frame()
-        # selecting columns - df.loc[:, [list of column names]
-        # minimum - df.loc[:, [list of column names].min() or max(), count(), avg(), sum()
-        # selection rows - df.loc[df.[column_name] >= 1000000
-        # group by - df.groupby([column names]).sum()
-        # self.trans_df.column.unique() returns distinct values in column
 
