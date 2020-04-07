@@ -1,12 +1,21 @@
 {% extends "base.html" %}
 
 {% block content %}
-    <h3>select category, month and year to see detailed spending</h3>
-    <form action="" method="post" novalidate>
-        {{ form.hidden_tag() }}
-        {{ form.category.label }} {{ form.category }}
-        {{ form.month.label }} {{ form.month }}
-        {{ form.year.label }} {{ form.year }}
-        {{ form.submit }}<br>
-    </form>
+    Spending Summary<br>
+    <table border="1">
+        <tr>
+            <th>Period</th>
+            <th>Amount Spent</th>
+            <th>Budget</th>
+            <th>% of Budget</th>
+        </tr>
+        {% for i in annual_spending %}
+        <tr>
+            <td>{{ i[0] }}</td>
+            <td>{{ '${:,.2f}'.format(i[1]) }}</td>
+            <td>{{ '${:,.2f}'.format(i[2]) }}</td>
+            <td>{{ '{:,.2f}%'.format(i[3]) }}</td>
+        </tr>
+        {% endfor %}
+    </table>
 {% endblock %}

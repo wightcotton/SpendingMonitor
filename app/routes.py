@@ -4,7 +4,8 @@ from config import Config
 from app.forms import LoginForm, RegistrationForm, UploadForm, HomeForm
 from flask_login import current_user, login_user, logout_user, login_required
 from app.models import User, UploadedFile
-from app.working_data import DataObjectFactory, DataObjectFactory_old
+from app.analysis.working_data import DataObjectFactory
+from app.old_working_data import DataObjectFactory_old
 from werkzeug.urls import url_parse
 from werkzeug.utils import secure_filename
 from io import BytesIO
@@ -18,16 +19,21 @@ def index():
     uploaded_file = UploadedFile.query.filter_by(user_id=current_user.id).order_by(UploadedFile.timestamp.desc()).first()
     if uploaded_file is None:
         return redirect(url_for('upload_file'))
-    dfact = DataObjectFactory(uploaded_file.filename, BytesIO(uploaded_file.data))
-    form.category.choices = create_selectfield_choices(dfact.get_trans().get_all_categories())
-    form.month.choices = create_selectfield_choices(dfact.get_trans().get_all_months())
-    form.year.choices = create_selectfield_choices(dfact.get_trans().get_all_years())
+    dfact_df = DataObjectFactory(uploaded_file.filename, BytesIO(uploaded_file.data)).get_trans()
+    # spending summary
+    annual_spending_info = [dfact_df.get_last_12_months_info(),
+                            dfact_df.get_last_calendar_year_info(),
+                            dfact_df.get_ytd_total_info()]
     if form.validate_on_submit():
         session["category"] = form.category.data
         session["month"] = form.month.data
         session['year'] = form.year.data
         return redirect(url_for('monthly_detail'))
-    return render_template('index.html', form=form, title='Home', file_info=[uploaded_file.filename, uploaded_file.timestamp])
+    return render_template('index.html',
+                           form=form,
+                           file_info=[uploaded_file.filename, uploaded_file.timestamp],
+                           title='Home',
+                           annual_spending = annual_spending_info)
 
 
 @app.route('/login', methods=['GET', 'POST'])
@@ -137,7 +143,7 @@ def monthly_detail():
     category = session['category']
     month = session["month"]
     year = session['year']
-    info = dfact.get_trans().get_category_by_month(category, month, year)
+    info = dfact.get_trans().get_category_spending_for_month(category, month, year)
     df = info[0]
     category_total = info[1]
     return render_template('monthly_detail.html',

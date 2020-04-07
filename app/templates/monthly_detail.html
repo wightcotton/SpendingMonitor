@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 
 {% block content %}
-    <h2>In {{ month }} {{ year }}, {{ category_total }} was spent on {{ category }}</h2>
+    <h2>In {{ month }} {{ year }}, {{ category }} spending was {{ '${:,.2f}'.format(category_total) }}</h2>
     {% for table in tables %}
         {{ titles[loop.index] }}
         {{ table | safe }}
