@@ -9,6 +9,7 @@ from app.old_working_data import DataObjectFactory_old
 from werkzeug.urls import url_parse
 from werkzeug.utils import secure_filename
 from io import BytesIO
+from datetime import date
 
 
 @app.route('/', methods=['GET', 'POST'])
@@ -21,9 +22,12 @@ def index():
         return redirect(url_for('upload_file'))
     dfact_df = DataObjectFactory(uploaded_file.filename, BytesIO(uploaded_file.data)).get_trans()
     # spending summary
-    annual_spending_info = [dfact_df.get_last_12_months_info(),
-                            dfact_df.get_last_calendar_year_info(),
-                            dfact_df.get_ytd_total_info()]
+    annual_spending_info = [dfact_df.get_last_year_info(),
+                            dfact_df.get_this_year_info(),
+                            dfact_df.get_last_qtr_info(),
+                            dfact_df.get_this_qtr_info(),
+                            dfact_df.get_last_month_info(),
+                            dfact_df.get_this_month_info()]
     if form.validate_on_submit():
         session["category"] = form.category.data
         session["month"] = form.month.data
@@ -33,6 +37,7 @@ def index():
                            form=form,
                            file_info=[uploaded_file.filename, uploaded_file.timestamp],
                            title='Home',
+                           today = date.today(),
                            annual_spending = annual_spending_info)
 
 
