@@ -10,7 +10,7 @@ class DataObjectFactory(object):
         self.budget = None
         self.uploaded_filename = filename
         if '.csv' in filename:
-            self.trans = Transactions(pd.read_csv(file), None)
+            self.trans = Transactions(pd.read_csv(file))
         elif '.xlsx' in filename:
             self.budget = Budget(pd.read_excel(file, "Budget Amounts"))
             self.trans = Transactions(pd.read_excel(file, "Transactions"))
@@ -33,7 +33,7 @@ class Transactions(object):
         self.transform_df()
         self.cat_worker = Category_Whisperer(self.trans_df)
         self.secondary_transform_df()
-        self.spending_df = self.trans_df.loc[self.trans_df["Account_Type"] == 'Expense']
+        self.spending_df = self.trans_df.loc[self.trans_df["Account_Type"] == 'Expense'].copy()
 
     def instantiate_constants(self):
         self.display_columns =["Category", "Date", "Description", "Amount"] # eventually this will be a user setting

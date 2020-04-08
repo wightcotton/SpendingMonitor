@@ -5,8 +5,6 @@ class Category_Whisperer(object):
     def __init__(self, full_df):
         self.df = full_df
         self.cat_info = {}
-        #self.create_cat_info()
-        print(self.cat_info)
 
     def create_cat_info(self):
         # category dict of useful info about category
