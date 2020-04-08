@@ -2,6 +2,7 @@ import pandas as pd
 from datetime import date
 import xlrd
 import numpy as np
+import math
 from app.analysis.wrangle_categories import Category_Whisperer
 
 class DataObjectFactory(object):
@@ -37,9 +38,16 @@ class Transactions(object):
 
     def instantiate_constants(self):
         self.display_columns =["Category", "Date", "Description", "Amount"] # eventually this will be a user setting
-        self.current_date = date.today()
-        self.current_year = self.current_date.year
-        self.current_month = self.current_date.month
+        current_month = date.today().month
+        self.current_qtr = math.ceil(current_month/3.)
+        self.last_qtr = self.current_qtr - 1
+        self.qtr_year = date.today().year
+        if self.current_qtr == 1:
+            self.last_qtr = 4
+            self.qtr_year -= 1
+        self.last_month = date.today().month - 1
+        if self.last_month == 0:
+            self.last_month = 12
 
     def transform_df(self):
         self.trans_df['Date'] = pd.to_datetime(self.trans_df['Date'])
@@ -77,23 +85,60 @@ class Transactions(object):
         number_spending_entries = temp_df['Amount'].count()
         budget = self.get_annual_budget()
         percent_of_budget = total_spending / budget *100
-        return ["last 12 full months:", total_spending, budget, percent_of_budget ]
+        return ["last 12 full months", total_spending, budget, percent_of_budget ]
 
-    def get_last_calendar_year_info(self):
+    def get_last_year_info(self):
         # get all spending trans for last calendar year
         temp_df = self.spending_df.loc[self.spending_df['Year'] == date.today().year-1]
         total_spending = temp_df['Amount'].sum()
         budget = self.get_annual_budget()
         percent_budget = total_spending / budget * 100
-        return ['last calendar year', total_spending, budget, percent_budget]
+        return ['for last year', total_spending, budget, percent_budget]
 
-    def get_ytd_total_info(self):
+    def get_this_year_info(self):
         # get spending so far this year
-        temp_df = self.spending_df.loc[self.spending_df["Year"] == date.today().year, self.display_columns]
+        temp_df = self.spending_df.loc[self.spending_df["Year"] == date.today().year]
         total_spending = temp_df["Amount"].sum()
         budget = self.get_annual_budget()
         percent_budget = total_spending / budget * 100
         return ['so far this year', total_spending, budget, percent_budget]
+
+    def get_last_qtr_info(self):
+        # get spending for last quarter
+        temp_df = self.spending_df.loc[((self.spending_df['Year'] == self.qtr_year)
+                                        & (self.spending_df["Qtr"] == self.last_qtr))]
+        total_spending = temp_df["Amount"].sum()
+        budget = self.get_annual_budget() / 4
+        percent_budget = total_spending / budget * 100
+        return ['for last quarter', total_spending, budget, percent_budget]
+
+    def get_this_qtr_info(self):
+        # get spending for last quarter
+        temp_df = self.spending_df.loc[((self.spending_df['Year'] == date.today().year)
+                                        & (self.spending_df["Qtr"] == self.current_qtr))]
+        total_spending = temp_df["Amount"].sum()
+        budget = self.get_annual_budget() / 4
+        percent_budget = total_spending / budget * 100
+        return ['so far this quarter', total_spending, budget, percent_budget]
+
+    def get_last_month_info(self):
+        # get spending for last month
+        temp_yr = date.today().year if self.last_month < 12 else date.today().year - 1
+        temp_df = self.spending_df.loc[((self.spending_df['Year'] == temp_yr)
+                                        & (self.spending_df["Month_as_dec"] == self.last_month))]
+        total_spending = temp_df["Amount"].sum()
+        budget = self.get_annual_budget() / 12
+        percent_budget = total_spending / budget * 100
+        return ['for last month', total_spending, budget, percent_budget]
+
+    def get_this_month_info(self):
+        # get spending for last quarter
+        temp_df = self.spending_df.loc[((self.spending_df['Year'] == date.today().year)
+                                        & (self.spending_df["Month_as_dec"] == date.today().month))]
+        total_spending = temp_df["Amount"].sum()
+        budget = self.get_annual_budget() / 12
+        percent_budget = total_spending / budget * 100
+        return ['so far this month', total_spending, budget, percent_budget]
 
     def get_annual_budget(self):
         # TODO derive number of months actually available in dataframe...need to worry about missing months?
