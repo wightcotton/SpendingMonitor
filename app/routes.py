@@ -20,6 +20,16 @@ def index():
     uploaded_file = UploadedFile.query.filter_by(user_id=current_user.id).order_by(UploadedFile.timestamp.desc()).first()
     if uploaded_file is None:
         return redirect(url_for('upload_file'))
+    return render_template('index.html',
+                           file_info=[uploaded_file.filename, uploaded_file.timestamp],
+                           title='Home')
+
+@app.route('/spending_analysis', methods=['GET', 'POST'])
+@login_required
+def spending_analysis():
+    uploaded_file = UploadedFile.query.filter_by(user_id=current_user.id).order_by(UploadedFile.timestamp.desc()).first()
+    if uploaded_file is None:
+        return redirect(url_for('upload_file'))
     dfact_df = DataObjectFactory(uploaded_file.filename, BytesIO(uploaded_file.data)).get_trans()
     # spending summary
     annual_spending_info = [dfact_df.get_last_year_info(),
@@ -28,17 +38,15 @@ def index():
                             dfact_df.get_this_qtr_info(),
                             dfact_df.get_last_month_info(),
                             dfact_df.get_this_month_info()]
-    if form.validate_on_submit():
-        session["category"] = form.category.data
-        session["month"] = form.month.data
-        session['year'] = form.year.data
-        return redirect(url_for('monthly_detail'))
-    return render_template('index.html',
-                           form=form,
+    cat_worker = dfact_df.get_cat_worker()
+    return render_template('spending_analysis.html',
                            file_info=[uploaded_file.filename, uploaded_file.timestamp],
                            title='Home',
                            today = date.today(),
-                           annual_spending = annual_spending_info)
+                           annual_spending = annual_spending_info,
+                           cat_info_headings = cat_worker.get_cat_info_headings(),
+                           cat_info = cat_worker.get_cat_info())
+
 
 
 @app.route('/login', methods=['GET', 'POST'])
