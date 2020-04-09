@@ -1,21 +1,5 @@
 {% extends "base.html" %}
 
 {% block content %}
-    Spending Summary as of {{ today }}<br>
-    <table border="1">
-        <tr>
-            <th>Period</th>
-            <th>Amount Spent</th>
-            <th>Budget</th>
-            <th>% of Budget</th>
-        </tr>
-        {% for i in annual_spending %}
-        <tr>
-            <td>{{ i[0] }}</td>
-            <td>{{ '${:,.2f}'.format(i[1]) }}</td>
-            <td>{{ '${:,.2f}'.format(i[2]) }}</td>
-            <td>{{ '{:,.2f}%'.format(i[3]) }}</td>
-        </tr>
-        {% endfor %}
-    </table>
+
 {% endblock %}

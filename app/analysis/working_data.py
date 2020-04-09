@@ -62,7 +62,10 @@ class Transactions(object):
 
     def secondary_transform_df(self):
         self.trans_df['Account_Type'] = self.trans_df['Category'].map(lambda c: self.cat_worker.get_category_type(c))
-        self.trans_df['Category_Budget'] = self.trans_df['Category'].map(lambda c: self.cat_worker.get_montly_budget(c))
+        self.trans_df['Category_Budget'] = self.trans_df['Category'].map(lambda c: self.cat_worker.get_monthly_budget(c))
+
+    def get_cat_worker(self):
+        return self.cat_worker
 
     def get_all_categories(self):
         return sorted(self.trans_df.Category.unique())
