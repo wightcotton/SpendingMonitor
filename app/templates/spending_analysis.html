@@ -20,23 +20,21 @@
     </table>
     <div>
     <table border="'1'">
-        <tr>
             <th>Category</th>
             {% for i in cat_info_headings %}
             <th>
                 {{ i }}
             </th>
             {% endfor %}
-        {%  for i in cat_info %}
-                    <tr>
-            {%  for v in i %}
-            <td>
-                {{ v }}
-            </td>
+            {%  for i in cat_info %}
+                <tr>
+                    {%  for v in i %}
+                        <td>
+                            {{ v }}
+                        </td>
+                    {% endfor %}
+                </tr>
             {% endfor %}
-            </tr>
-    {% endfor %}
-        </tr>
     </table>
     </div>
 {% endblock %}

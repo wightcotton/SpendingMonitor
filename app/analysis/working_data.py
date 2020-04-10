@@ -10,20 +10,19 @@ from io import BytesIO
 
 class File_Helper(object):
     def __init__(self):
-        self.trans_df = None
+        self.trans = None
         self.budget = None
 
     def set_file(self, filename, data, user_id):
         uploaded_file = UploadedFile(filename=filename, data=data, user_id=user_id)
         db.session.add(uploaded_file)
         db.session.commit()
-        self.populate_dataframe(uploaded_file)
 
     def get_file_info(self, user_id):
         file = UploadedFile.query.filter_by(user_id=user_id).order_by(UploadedFile.timestamp.desc()).first()
         file_info = []
         if file is not None:
-            self.trans_df = Transactions(file)
+            self.trans = Transactions(file)
             file_info = [file.filename, file.timestamp]
         return file_info
 
@@ -31,7 +30,7 @@ class File_Helper(object):
         return self.budget
 
     def get_trans_df(self):
-        return self.trans_df
+        return self.trans
 
 class Budget(object):
     def __init__(self, budget_file):
