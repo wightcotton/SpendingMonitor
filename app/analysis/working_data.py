@@ -4,37 +4,54 @@ import xlrd
 import numpy as np
 import math
 from app.analysis.wrangle_categories import Category_Whisperer
+from app.models import UploadedFile
+from app import db
+from io import BytesIO
 
-class DataObjectFactory(object):
-    def __init__(self, filename, file):
-        self.trans = None
+class File_Helper(object):
+    def __init__(self):
+        self.trans_df = None
         self.budget = None
-        self.uploaded_filename = filename
-        if '.csv' in filename:
-            self.trans = Transactions(pd.read_csv(file))
-        elif '.xlsx' in filename:
-            self.budget = Budget(pd.read_excel(file, "Budget Amounts"))
-            self.trans = Transactions(pd.read_excel(file, "Transactions"))
 
-    def get_trans(self):
-        return self.trans
+    def set_file(self, filename, data, user_id):
+        uploaded_file = UploadedFile(filename=filename, data=data, user_id=user_id)
+        db.session.add(uploaded_file)
+        db.session.commit()
+        self.populate_dataframe(uploaded_file)
+
+    def get_file_info(self, user_id):
+        file = UploadedFile.query.filter_by(user_id=user_id).order_by(UploadedFile.timestamp.desc()).first()
+        file_info = []
+        if file is not None:
+            self.trans_df = Transactions(file)
+            file_info = [file.filename, file.timestamp]
+        return file_info
 
     def get_budgets(self):
         return self.budget
 
+    def get_trans_df(self):
+        return self.trans_df
 
 class Budget(object):
     def __init__(self, budget_file):
         self.budget_structure = {}
 
 class Transactions(object):
-    def __init__(self, incoming_df):
-        self.trans_df = incoming_df
+    def __init__(self, file):
+        self.populate_dataframe(file)
         self.instantiate_constants()
         self.transform_df()
-        self.cat_worker = Category_Whisperer(self.trans_df)
         self.secondary_transform_df()
-        self.spending_df = self.trans_df.loc[self.trans_df["Account_Type"] == 'Expense'].copy()
+        self.spending_df = self.spending_df =self.trans_df.loc[self.trans_df['Account_Type'] == 'Expense']
+        self.spending_cat_info_headings = ['Monthly Items', 'Frequency', 'Monthly Budget']
+        self.spending_cat_info = self.create_spending_cat_info()
+
+    def populate_dataframe(self, file):
+        if '.csv' in file.filename:
+            self.trans_df = pd.read_csv(BytesIO(file.data))
+        elif '.xlsx' in file.filename:
+            self.trans_df = pd.read_excel(BytesIO(file.data), "Transactions")
 
     def instantiate_constants(self):
         self.display_columns =["Category", "Date", "Description", "Amount"] # eventually this will be a user setting
@@ -61,11 +78,37 @@ class Transactions(object):
         self.trans_df['Amount'] = self.trans_df['Amount'] * self.trans_df['normalizer']
 
     def secondary_transform_df(self):
-        self.trans_df['Account_Type'] = self.trans_df['Category'].map(lambda c: self.cat_worker.get_category_type(c))
-        self.trans_df['Category_Budget'] = self.trans_df['Category'].map(lambda c: self.cat_worker.get_monthly_budget(c))
+        self.trans_df['Account_Type'] = self.trans_df['Category'].map(lambda c: self.get_category_type(c))
 
-    def get_cat_worker(self):
-        return self.cat_worker
+    def create_spending_cat_info(self):
+        # category dict of useful info about category
+        ret = {}
+        for cat in self.spending_df.Category.unique():
+            ret[cat] = ['{:,.2f}'.format(self.get_monthly_spending_frequency(cat)),
+                        self.get_spending_frequency_category(cat),
+                        '${:,.2f}'.format(self.get_monthly_budget(cat))
+                        ]
+        return ret
+
+    def get_spending_cat_info_headings(self):
+        return self.spending_cat_info_headings
+
+    def get_spending_cat_info(self):
+        return self.spending_cat_info
+
+    def get_spending_cat_info_by(self, column_number_of_detail):
+        ret = []
+        for key, value in self.spending_cat_info.items():
+            temp = []
+            temp.append(key)
+            for v in value:
+                temp.append(v)
+            ret.append(temp)
+        return sorted(ret, key=lambda x: x[column_number_of_detail])
+
+
+    def get_trans_full(self):
+        return [self.trans_df, self.trans_df["Amount"].sum()]
 
     def get_all_categories(self):
         return sorted(self.trans_df.Category.unique())
@@ -76,8 +119,49 @@ class Transactions(object):
     def get_all_years(self):
         return sorted(self.trans_df.Year.unique())
 
-    def get_trans_full(self):
-        return [self.trans_df, self.trans_df["Amount"].sum()]
+    def get_number_of_all_entries(self, cat):
+        return self.trans_df.loc[self.trans_df['Category'] == cat]['Category'].count()
+
+    def get_number_of_all_credit_entries(self, cat):
+        return self.trans_df.loc[((self.trans_df["Category"] == cat) & (self.trans_df['Transaction Type'] == 'credit'))]['Category'].count()
+
+    def get_number_of_all_amounts_over(self, cat, tolerance):
+        return self.trans_df.loc[((self.trans_df["Category"] == cat) & (self.trans_df['Amount'] > tolerance))]['Category'].count()
+
+    def get_category_type(self, cat):
+        number_of_category_entries = self.get_number_of_all_entries(cat)
+        number_of_credit_entries = self.get_number_of_all_credit_entries(cat)
+        credit_entries_percent = number_of_credit_entries / number_of_category_entries
+        number_of_large_entries = self.get_number_of_all_amounts_over(cat, 1000)
+        large_entries_percent = number_of_large_entries / number_of_category_entries
+        if credit_entries_percent > .5:
+            return 'Income'
+        elif large_entries_percent > .1:
+            return 'Investment'
+        else:
+            return 'Expense'
+
+    def get_monthly_budget(self, cat):
+        return self.trans_df.loc[self.trans_df['Category'] == cat]['Amount'].mean()
+        # somehow take advantage of df.groupby("Category")['Amount'].mean()?
+        # would return a df with an entery for each category with averaged amounts?
+        # might represent a more effecient approach?
+
+    def get_monthly_spending_frequency(self, cat):
+        # count items by month - regular equals 3 0r 4 per month?
+        return self.get_number_of_spending_items(cat) / self.get_number_of_spending_months()
+
+    def get_spending_frequency_category(self, cat):
+        # count items by month - regular equals 3 0r 4 per month?
+        frequency_of_items = self.get_monthly_spending_frequency(cat)
+        if frequency_of_items > 3.5:
+            return 'weekly'
+        elif frequency_of_items > .85:
+            return 'monthly'
+        elif frequency_of_items > .2:
+            return 'quarterly'
+        else:
+            return 'sporadically'
 
     def get_last_12_months_info(self):
         # get all spending trans for the past 12 months
@@ -146,9 +230,17 @@ class Transactions(object):
     def get_annual_budget(self):
         # TODO derive number of months actually available in dataframe...need to worry about missing months?
         # just count number of distinct year month combos with some transactions?
-        number_of_months_in_data = len(self.spending_df['MthYr'].unique())
         total_spending = self.spending_df['Amount'].sum()
-        return total_spending / number_of_months_in_data * 12
+        return total_spending / self.get_number_of_spending_months() * 12
+
+    def get_number_of_spending_entries(self, cat):
+        return self.spending_df.loc[self.spending_df['Category'] == cat]['Category'].count()
+
+    def get_number_of_spending_items(self, cat):
+        return self.spending_df.loc[self.spending_df['Category'] == cat]['Amount'].count()
+
+    def get_number_of_spending_months(self):
+        return len(self.spending_df['MthYr'].unique())
 
     def get_category_spending_for_month(self, cat, m, y):
         ret = []

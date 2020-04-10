@@ -27,17 +27,16 @@
                 {{ i }}
             </th>
             {% endfor %}
-        </tr>
-        {%  for key, value_list in cat_info.items() %}
-        <tr>
-            <td>{{ key }}
-            {% for v in value_list %}
+        {%  for i in cat_info %}
+                    <tr>
+            {%  for v in i %}
             <td>
                 {{ v }}
             </td>
             {% endfor %}
+            </tr>
+    {% endfor %}
         </tr>
-        {% endfor %}
     </table>
     </div>
 {% endblock %}
