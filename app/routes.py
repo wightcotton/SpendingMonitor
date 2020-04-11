@@ -17,7 +17,7 @@ from datetime import date
 def index():
     form = HomeForm()
     file_info = File_Helper().get_file_info(current_user.id)
-    if file_info == []:
+    if not file_info:
         return redirect(url_for('upload_file'))
     return render_template('index.html',
                            file_info=[file_info[0], file_info[1]],
@@ -29,23 +29,23 @@ def index():
 def spending_analysis():
     file = File_Helper()
     file_info = file.get_file_info(current_user.id)
-    if file_info == []:
+    if not file_info:
         return redirect(url_for('upload_file'))
-    dfact_df = file.get_trans_df()
+    trans = file.get_trans()
     # spending summary
-    annual_spending_info = [dfact_df.get_last_year_info(),
-                            dfact_df.get_this_year_info(),
-                            dfact_df.get_last_qtr_info(),
-                            dfact_df.get_this_qtr_info(),
-                            dfact_df.get_last_month_info(),
-                            dfact_df.get_this_month_info()]
+    annual_spending_info = [trans.get_last_year_info(),
+                            trans.get_this_year_info(),
+                            trans.get_last_qtr_info(),
+                            trans.get_this_qtr_info(),
+                            trans.get_last_month_info(),
+                            trans.get_this_month_info()]
     return render_template('spending_analysis.html',
                            file_info=[file_info[0], file_info[1]],
                            title='Home',
                            today=date.today(),
                            annual_spending=annual_spending_info,
-                           cat_info_headings=dfact_df.get_spending_cat_info_headings(),
-                           cat_info=dfact_df.get_spending_cat_info_by(2))
+                           cat_info_headings=trans.get_spending_cat_info_headings(),
+                           cat_info=trans.get_spending_cat_info_by(1))
 
 
 @app.route('/login', methods=['GET', 'POST'])

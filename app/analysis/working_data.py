@@ -29,7 +29,7 @@ class File_Helper(object):
     def get_budgets(self):
         return self.budget
 
-    def get_trans_df(self):
+    def get_trans(self):
         return self.trans
 
 class Budget(object):
@@ -43,7 +43,12 @@ class Transactions(object):
         self.transform_df()
         self.secondary_transform_df()
         self.spending_df = self.spending_df =self.trans_df.loc[self.trans_df['Account_Type'] == 'Expense']
-        self.spending_cat_info_headings = ['Monthly Items', 'Frequency', 'Monthly Budget']
+        self.spending_cat_info_headings = ['Monthly Items', 'Ave Amount', 'Frequency', 'Monthly Budget']
+        self.number_of_spending_months = None
+        self.spending_entries_by_cat = None
+        self.count_of_spending_entries_by_cat = None
+        self.mean_spending_by_cat = None
+        self.total_spending_by_cat = None
         self.spending_cat_info = self.create_spending_cat_info()
 
     def populate_dataframe(self, file):
@@ -79,15 +84,7 @@ class Transactions(object):
     def secondary_transform_df(self):
         self.trans_df['Account_Type'] = self.trans_df['Category'].map(lambda c: self.get_category_type(c))
 
-    def create_spending_cat_info(self):
-        # category dict of useful info about category
-        ret = {}
-        for cat in self.spending_df.Category.unique():
-            ret[cat] = ['{:,.2f}'.format(self.get_monthly_spending_frequency(cat)),
-                        self.get_spending_frequency_category(cat),
-                        '${:,.2f}'.format(self.get_monthly_budget(cat))
-                        ]
-        return ret
+
 
     def get_spending_cat_info_headings(self):
         return self.spending_cat_info_headings
@@ -103,7 +100,7 @@ class Transactions(object):
             for v in value:
                 temp.append(v)
             ret.append(temp)
-        return sorted(ret, key=lambda x: x[column_number_of_detail])
+        return sorted(ret, key=lambda x: x[column_number_of_detail], reverse=True)
 
 
     def get_trans_full(self):
@@ -140,15 +137,49 @@ class Transactions(object):
         else:
             return 'Expense'
 
-    def get_monthly_budget(self, cat):
-        return self.trans_df.loc[self.trans_df['Category'] == cat]['Amount'].mean()
-        # somehow take advantage of df.groupby("Category")['Amount'].mean()?
-        # would return a df with an entery for each category with averaged amounts?
-        # might represent a more effecient approach?
+# basic spending facts, lazily initialized
+
+    def get_number_of_spending_months(self):
+        # returns an int
+        if self.number_of_spending_months is None:
+            self.number_of_spending_months = len(self.spending_df['MthYr'].unique())
+        return self.number_of_spending_months
+
+    def get_spending_entries_by_cat(self):
+        # returns a dataframe grouped by Category
+        if self.spending_entries_by_cat is None:
+            self.spending_entries_by_cat = self.spending_df.groupby(['Category'])
+        return self.spending_entries_by_cat
+
+    def get_count_of_spending_entries_by_cat(self):
+        if self.count_of_spending_entries_by_cat is None:
+            self.count_of_spending_entries_by_cat = self.get_spending_entries_by_cat().count()
+        return self.count_of_spending_entries_by_cat
+
+    def get_total_spending_by_cat(self):
+        if self.total_spending_by_cat is None:
+            self.total_spending_by_cat = self.get_spending_entries_by_cat().sum()
+        return self.total_spending_by_cat
+
+    def get_mean_spending_by_cat(self):
+        # returns a series keyed by category of the mean size of amounts
+        if self.mean_spending_by_cat is None:
+            self.mean_spending_by_cat = self.get_spending_entries_by_cat().mean()
+        return self.mean_spending_by_cat
+
+# results based on analysis of basic facts
+
+    def get_monthly_spending_budget(self, cat):
+        # naive budget is average of spending by cat divided by number of months
+        return self.get_total_spending_by_cat()['Amount'][cat] / self.get_number_of_spending_months()
 
     def get_monthly_spending_frequency(self, cat):
-        # count items by month - regular equals 3 0r 4 per month?
-        return self.get_number_of_spending_items(cat) / self.get_number_of_spending_months()
+        # mean of the number of entries for a category by month
+        return self.get_count_of_spending_entries_by_cat()['Amount'][cat] / self.get_number_of_spending_months()
+
+    def get_ave_entry_spending_amount(self, cat):
+        # the average amount spent per entry in a category
+        return self.get_total_spending_by_cat()['Amount'][cat] / self.get_count_of_spending_entries_by_cat()['Amount'][cat]
 
     def get_spending_frequency_category(self, cat):
         # count items by month - regular equals 3 0r 4 per month?
@@ -161,6 +192,19 @@ class Transactions(object):
             return 'quarterly'
         else:
             return 'sporadically'
+
+# summarize results into list by listing of summary items above...
+
+    def create_spending_cat_info(self):
+        # category dict of useful info about category
+        ret = {}
+        for cat in self.spending_df.Category.unique():
+            ret[cat] = ['{:,.2f}'.format(self.get_monthly_spending_frequency(cat)),
+                        '{:,.2f}'.format(self.get_ave_entry_spending_amount(cat)),
+                        self.get_spending_frequency_category(cat),
+                        '${:,.2f}'.format(self.get_monthly_spending_budget(cat))
+                        ]
+        return ret
 
     def get_last_12_months_info(self):
         # get all spending trans for the past 12 months
@@ -238,8 +282,6 @@ class Transactions(object):
     def get_number_of_spending_items(self, cat):
         return self.spending_df.loc[self.spending_df['Category'] == cat]['Amount'].count()
 
-    def get_number_of_spending_months(self):
-        return len(self.spending_df['MthYr'].unique())
 
     def get_category_spending_for_month(self, cat, m, y):
         ret = []
