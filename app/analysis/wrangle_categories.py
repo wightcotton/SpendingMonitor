@@ -14,7 +14,7 @@ class Category_Whisperer(object):
         for cat in self.df.Category.unique():
             self.cat_info[cat] = [self.get_category_type(cat),
                                   self.trans.get_spending_frequency(cat),
-                                  self.trans.get_monthly_budget(cat)]
+                                  self.trans.get_monthly_spending_budget(cat)]
 
     def get_cat_info_headings(self):
         return self.cat_info_headings
