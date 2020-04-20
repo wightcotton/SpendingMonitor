@@ -8,10 +8,10 @@ from app.models import UploadedFile
 from app import db
 from io import BytesIO
 
+
 class File_Helper(object):
     def __init__(self):
-        self.trans = None
-        self.budget = None
+        pass
 
     def set_file(self, filename, data, user_id):
         uploaded_file = UploadedFile(filename=filename, data=data, user_id=user_id)
@@ -22,19 +22,9 @@ class File_Helper(object):
         file = UploadedFile.query.filter_by(user_id=user_id).order_by(UploadedFile.timestamp.desc()).first()
         file_info = []
         if file is not None:
-            self.trans = Transactions(file)
-            file_info = [file.filename, file.timestamp]
+            file_info = [file.filename, file.timestamp, file.data]
         return file_info
 
-    def get_budgets(self):
-        return self.budget
-
-    def get_trans(self):
-        return self.trans
-
-class Budget(object):
-    def __init__(self, budget_file):
-        self.budget_structure = {}
 
 class Transactions(object):
     def __init__(self, file):
@@ -42,7 +32,7 @@ class Transactions(object):
         self.instantiate_constants()
         self.transform_df()
         self.secondary_transform_df()
-        self.spending_df = self.spending_df =self.trans_df.loc[self.trans_df['Account_Type'] == 'Expense']
+        self.spending_df = self.spending_df = self.trans_df.loc[self.trans_df['Account_Type'] == 'Expense']
         self.spending_cat_info_headings = ['Monthly Items', 'Ave Amount', 'Frequency', 'Monthly Budget']
         self.number_of_spending_months = None
         self.spending_entries_by_cat = None
@@ -51,6 +41,7 @@ class Transactions(object):
         self.total_spending_by_cat = None
         self.spending_cat_info = self.create_spending_cat_info()
 
+    # init methods
     def populate_dataframe(self, file):
         if '.csv' in file.filename:
             self.trans_df = pd.read_csv(BytesIO(file.data))
@@ -58,9 +49,9 @@ class Transactions(object):
             self.trans_df = pd.read_excel(BytesIO(file.data), "Transactions")
 
     def instantiate_constants(self):
-        self.display_columns =["Category", "Date", "Description", "Amount"] # eventually this will be a user setting
+        self.display_columns = ["Category", "Date", "Description", "Amount"]  # eventually this will be a user setting
         current_month = date.today().month
-        self.current_qtr = math.ceil(current_month/3.)
+        self.current_qtr = math.ceil(current_month / 3.)
         self.last_qtr = self.current_qtr - 1
         self.qtr_year = date.today().year
         if self.current_qtr == 1:
@@ -72,11 +63,11 @@ class Transactions(object):
 
     def transform_df(self):
         self.trans_df['Date'] = pd.to_datetime(self.trans_df['Date'])
-        self.trans_df['Year'] = self.trans_df["Date"].map(lambda y: int(y.strftime('%Y'))) # year as 4 digit int
-        self.trans_df['Qtr'] = self.trans_df['Date'].dt.quarter # int 1, 2, 3, 4
-        self.trans_df['Month'] = self.trans_df["Date"].dt.strftime('%B') # text month name
+        self.trans_df['Year'] = self.trans_df["Date"].map(lambda y: int(y.strftime('%Y')))  # year as 4 digit int
+        self.trans_df['Qtr'] = self.trans_df['Date'].dt.quarter  # int 1, 2, 3, 4
+        self.trans_df['Month'] = self.trans_df["Date"].dt.strftime('%B')  # text month name
         self.trans_df['MthYr'] = self.trans_df['Month'] + self.trans_df['Year'].astype(str)
-        self.trans_df['Month_as_dec'] = self.trans_df['Date'].map(lambda m: int(m.strftime('%m'))) # as 2 digit int
+        self.trans_df['Month_as_dec'] = self.trans_df['Date'].map(lambda m: int(m.strftime('%m')))  # as 2 digit int
         # orient amounts toward spending - what is spend is a positive number
         self.trans_df["normalizer"] = [1 if x == 'debit' else -1 for x in self.trans_df["Transaction Type"]]
         self.trans_df['Amount'] = self.trans_df['Amount'] * self.trans_df['normalizer']
@@ -84,7 +75,7 @@ class Transactions(object):
     def secondary_transform_df(self):
         self.trans_df['Account_Type'] = self.trans_df['Category'].map(lambda c: self.get_category_type(c))
 
-
+    # end init methods
 
     def get_spending_cat_info_headings(self):
         return self.spending_cat_info_headings
@@ -100,8 +91,7 @@ class Transactions(object):
             for v in value:
                 temp.append(v)
             ret.append(temp)
-        return sorted(ret, key=lambda x: x[column_number_of_detail], reverse=True)
-
+        return sorted(ret, key=lambda x: float(x[column_number_of_detail]), reverse=True)
 
     def get_trans_full(self):
         return [self.trans_df, self.trans_df["Amount"].sum()]
@@ -119,10 +109,13 @@ class Transactions(object):
         return self.trans_df.loc[self.trans_df['Category'] == cat]['Category'].count()
 
     def get_number_of_all_credit_entries(self, cat):
-        return self.trans_df.loc[((self.trans_df["Category"] == cat) & (self.trans_df['Transaction Type'] == 'credit'))]['Category'].count()
+        return \
+            self.trans_df.loc[((self.trans_df["Category"] == cat) & (self.trans_df['Transaction Type'] == 'credit'))][
+                'Category'].count()
 
     def get_number_of_all_amounts_over(self, cat, tolerance):
-        return self.trans_df.loc[((self.trans_df["Category"] == cat) & (self.trans_df['Amount'] > tolerance))]['Category'].count()
+        return self.trans_df.loc[((self.trans_df["Category"] == cat) & (self.trans_df['Amount'] > tolerance))][
+            'Category'].count()
 
     def get_category_type(self, cat):
         number_of_category_entries = self.get_number_of_all_entries(cat)
@@ -137,7 +130,10 @@ class Transactions(object):
         else:
             return 'Expense'
 
-# basic spending facts, lazily initialized
+    def get_spending_categories(self):
+        return self.spending_df['Category'].unique().tolist()
+
+    # basic spending facts, lazily initialized
 
     def get_number_of_spending_months(self):
         # returns an int
@@ -167,7 +163,7 @@ class Transactions(object):
             self.mean_spending_by_cat = self.get_spending_entries_by_cat().mean()
         return self.mean_spending_by_cat
 
-# results based on analysis of basic facts
+    # results based on analysis of basic facts
 
     def get_monthly_spending_budget(self, cat):
         # naive budget is average of spending by cat divided by number of months
@@ -179,7 +175,8 @@ class Transactions(object):
 
     def get_ave_entry_spending_amount(self, cat):
         # the average amount spent per entry in a category
-        return self.get_total_spending_by_cat()['Amount'][cat] / self.get_count_of_spending_entries_by_cat()['Amount'][cat]
+        return self.get_total_spending_by_cat()['Amount'][cat] / self.get_count_of_spending_entries_by_cat()['Amount'][
+            cat]
 
     def get_spending_frequency_category(self, cat):
         # count items by month - regular equals 3 0r 4 per month?
@@ -193,7 +190,7 @@ class Transactions(object):
         else:
             return 'sporadically'
 
-# summarize results into list by listing of summary items above...
+    # summarize results into list by listing of summary items above...
 
     def create_spending_cat_info(self):
         # category dict of useful info about category
@@ -208,18 +205,19 @@ class Transactions(object):
 
     def get_last_12_months_info(self):
         # get all spending trans for the past 12 months
-        temp_df = self.spending_df.loc[((self.spending_df['Month_as_dec'] < date.today().month) & (self.spending_df["Year"] == date.today().year))
-                             | ((self.spending_df["Year"] == date.today().year - 1)
-                                & (self.spending_df['Month_as_dec'] >= date.today().month))]
+        temp_df = self.spending_df.loc[
+            ((self.spending_df['Month_as_dec'] < date.today().month) & (self.spending_df["Year"] == date.today().year))
+            | ((self.spending_df["Year"] == date.today().year - 1)
+               & (self.spending_df['Month_as_dec'] >= date.today().month))]
         total_spending = temp_df['Amount'].sum()
         number_spending_entries = temp_df['Amount'].count()
         budget = self.get_annual_budget()
-        percent_of_budget = total_spending / budget *100
-        return ["last 12 full months", total_spending, budget, percent_of_budget ]
+        percent_of_budget = total_spending / budget * 100
+        return ["last 12 full months", total_spending, budget, percent_of_budget]
 
     def get_last_year_info(self):
         # get all spending trans for last calendar year
-        temp_df = self.spending_df.loc[self.spending_df['Year'] == date.today().year-1]
+        temp_df = self.spending_df.loc[self.spending_df['Year'] == date.today().year - 1]
         total_spending = temp_df['Amount'].sum()
         budget = self.get_annual_budget()
         percent_budget = total_spending / budget * 100
@@ -282,16 +280,14 @@ class Transactions(object):
     def get_number_of_spending_items(self, cat):
         return self.spending_df.loc[self.spending_df['Category'] == cat]['Amount'].count()
 
-
     def get_category_spending_for_month(self, cat, m, y):
         ret = []
         ret.append(self.spending_df.loc[(self.spending_df["Category"] == cat) &
-                                     (self.spending_df["Month"] == m) &
-                                     (self.spending_df["Year"] == y),
-                                     self.display_columns])
+                                        (self.spending_df["Month"] == m) &
+                                        (self.spending_df["Year"] == y),
+                                        self.display_columns])
         ret.append(ret[0]["Amount"].sum())
         return ret
-
 
     def get_cat_spending_by_qtr_and_year(self):
         ret = []
@@ -299,11 +295,11 @@ class Transactions(object):
 
     def get_cat_spending_by_month_qtr_and_year(self):
         ret = []
-        return(self.trans_df.groupby(["Category", "Year", "Month"])["Amount"].sum())
+        return (self.trans_df.groupby(["Category", "Year", "Month"])["Amount"].sum())
 
     def foobar(self):
-        return(self.get_cat_spending_by_month_and_year() + self.get_cat_spending_by_year())
-        #return self.trans_df.loc[self.trans_df[(self.trans_df["Category"] == cat) & (self.trans_df["Month"] == m), :]]
+        return (self.get_cat_spending_by_month_and_year() + self.get_cat_spending_by_year())
+        # return self.trans_df.loc[self.trans_df[(self.trans_df["Category"] == cat) & (self.trans_df["Month"] == m), :]]
 
         # self.trans_df.Category.unique().to_frame()
         # selecting columns - df.loc[:, [list of column names]
@@ -311,4 +307,3 @@ class Transactions(object):
         # selection rows - df.loc[df.[column_name] >= 1000000
         # group by - df.groupby([column names]).sum()
         # self.trans_df.column.unique() returns distinct values in column
-
