@@ -5,6 +5,7 @@ from app.forms import LoginForm, RegistrationForm, UploadForm, HomeForm
 from flask_login import current_user, login_user, logout_user, login_required
 from app.models import User, UploadedFile
 from app.analysis.working_data import File_Helper
+from app.analysis.trans_info_request import TransInfo
 from app.old_working_data import DataObjectFactory_old
 from werkzeug.urls import url_parse
 from werkzeug.utils import secure_filename
@@ -16,12 +17,15 @@ from datetime import date
 @login_required
 def index():
     form = HomeForm()
-    file_info = File_Helper().get_file_info(current_user.id)
+    info_requester = TransInfo(current_user.id)
+    file_info = info_requester.get_file_info()
     if not file_info:
-        return redirect(url_for('upload_file'))
+        redirect(url_for('upload_file'))
     return render_template('index.html',
                            file_info=[file_info[0], file_info[1]],
-                           title='Home')
+                           title='Home',
+                           today=date.today(),
+                           spending_summary_info=info_requester.get_summary_spending_info())
 
 
 @app.route('/spending_analysis', methods=['GET', 'POST'])
@@ -33,17 +37,10 @@ def spending_analysis():
         return redirect(url_for('upload_file'))
     trans = file.get_trans()
     # spending summary
-    annual_spending_info = [trans.get_last_year_info(),
-                            trans.get_this_year_info(),
-                            trans.get_last_qtr_info(),
-                            trans.get_this_qtr_info(),
-                            trans.get_last_month_info(),
-                            trans.get_this_month_info()]
     return render_template('spending_analysis.html',
                            file_info=[file_info[0], file_info[1]],
                            title='Home',
                            today=date.today(),
-                           annual_spending=annual_spending_info,
                            cat_info_headings=trans.get_spending_cat_info_headings(),
                            cat_info=trans.get_spending_cat_info_by(1))
 
