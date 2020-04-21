@@ -19,8 +19,8 @@ def index():
     form = HomeForm()
     info_requester = TransInfo(current_user.id)
     file_info = info_requester.get_file_info()
-    if not file_info:
-        redirect(url_for('upload_file'))
+    if file_info is None:
+        return redirect(url_for('upload_file'))
     return render_template('index.html',
                            file_info=[file_info[0], file_info[1]],
                            title='Home',
@@ -48,8 +48,9 @@ def spending_analysis():
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     # for now, just have this user and do not allow people to register but still have to login
-    db.session.query(User).filter(User.username == 'bob').delete(synchronize_session=False)
-    default_user = User(username='bob', email='b@b.com')
+#    db.session.query(User).filter(User.username == 'bob').delete(synchronize_session=False)
+    User.query().delete() #clean up old users, TODO build user admin page
+    default_user = User(username='bob', email='b@bibbbo.com')
     default_user.set_password('time_flies!!!!')
     db.session.add(default_user)
     db.session.commit()
