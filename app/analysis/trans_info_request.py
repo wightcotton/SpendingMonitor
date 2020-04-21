@@ -7,7 +7,7 @@ class TransInfo(object):
     def __init__(self, user_id):
         self.fact = DataFrameFactory(user_id)
         self.file_info = self.fact.get_file_info()
-        self.df_actor = self.fact.get_all_trans_actor()
+        self.df_actor = self.fact.get_trans_df_actor()
         self.display_columns = ["Category", "Date", "Description", "Amount"]  # eventually this will be a user setting
         current_month = date.today().month
         self.current_qtr = math.ceil(current_month / 3.)

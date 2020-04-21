@@ -20,7 +20,7 @@ class File_Helper(object):
 
     def get_file_info(self, user_id):
         file = UploadedFile.query.filter_by(user_id=user_id).order_by(UploadedFile.timestamp.desc()).first()
-        file_info = []
+        file_info = None
         if file is not None:
             file_info = [file.filename, file.timestamp, file.data]
         return file_info

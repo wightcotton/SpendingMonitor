@@ -10,6 +10,7 @@ from app.analysis.working_data import File_Helper
 class DataFrameFactory(object):
     def __init__(self, user_id):
         self.file_info = File_Helper().get_file_info(user_id)
+        self.trans_df_actor = None
         if self.file_info is not None:
             if '.csv' in self.file_info[0]:
                 self.trans_df = pd.read_csv(BytesIO(self.file_info[2]))
@@ -21,10 +22,10 @@ class DataFrameFactory(object):
 
     def get_file_info(self):
         # just return file name and datetime
-        return self.file_info[0:2]
+        return None if self.file_info is None else self.file_info[0:2]
 
-    def get_all_trans_actor(self):
-        return self.trans_df_actor
+    def get_trans_df_actor(self):
+        return None if self.trans_df_actor is None else self.trans_df_actor
 
 
 class DataFrameActor(object):
