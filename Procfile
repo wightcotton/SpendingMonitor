@@ -1,1 +1,1 @@
-web: flask db init; flask db upgrade; gunicorn spendingmonitor:app
+web: flask db upgrade; gunicorn spendingmonitor:app
