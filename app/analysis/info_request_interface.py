@@ -1,13 +1,29 @@
 from datetime import date
 import math
-from app.analysis.dataframe_actor import DataFrameFactory
 
+from app.analysis.dataframe_actor import File_Upload
+from app.analysis.dataframe_actor import DataFrameActor
+import pandas as pd
 
-class TransInfo(object):
+class DataSourceFactory(object):
     def __init__(self, user_id):
-        self.fact = DataFrameFactory(user_id)
-        self.file_info = self.fact.get_file_info()
-        self.df_actor = self.fact.get_trans_df_actor()
+        # in the future, if there are other source types for the info, the selection occurs here
+        self.source_helper = File_Upload(user_id)
+        self.actor = self.source_helper.get_actor()
+
+    def get_source_helper(self):
+        # look here for to carry out actions and get info related to the source ie, fileupload
+        return self.source_helper
+
+    def get_actor(self):
+        #look here for information on the data in the data frames
+        return self.actor
+
+class InfoRequestHandler(object):
+    def __init__(self, user_id):
+        factory = DataSourceFactory(user_id)
+        self.source_helper = factory.get_source_helper()
+        self.actor = factory.get_actor()
         self.display_columns = ["Category", "Date", "Description", "Amount"]  # eventually this will be a user setting
         current_month = date.today().month
         self.current_qtr = math.ceil(current_month / 3.)
@@ -20,22 +36,45 @@ class TransInfo(object):
         if self.last_month == 0:
             self.last_month = 12
 
-    def get_file_info(self):
-        return self.file_info
+    # requests against the source file upload
+    def get_source_details(self):
+        return self.source_helper.get_file_details()
+
+    def add_new_source(self, attribute_list):
+        return self.source_helper.add_new_file(attribute_list)
+
+    def set_recent_source_details(self, attribute_list):
+        self.source_helper.set_recent_file(attribute_list)
+
+    def get_source_list(self):
+        return self.source_helper.get_files()
+
+    def delete_all_sources(self):
+        self.source_helper.delete_files()
+
+    def delete_source(self, list):
+        self.source_helper.delete_file(list)
+
+    def get_category_summary_info(self):
+        return self.actor.get_category_summary_info().sort_values(['category_type', 'frequency'], ascending=False).to_html()
 
     def get_summary_info(self):
-        return self.df_actor.get_summary_info()
+        return self.actor.get_summary_info()
 
     def get_summary_spending_info(self):
-        return self.df_actor.get_summary_spending_info()
+        return self.actor.get_summary_spending_info()
 
 
-class SpendingTransInfo(TransInfo):
+
+class SpendingTransInfo(InfoRequestHandler):
     def __init__(self, user_id):
         super().__init__(user_id)
-        self.df_actor = self.fact.get_all_trans_actor()  # this resets a variable that is set in super.__init__
+        self.df_actor = self.factory.get_all_trans_actor()  # this resets a variable that is set in super.__init__
         self.spending_cat_info_headings = ['Monthly Items', 'Ave Amount', 'Frequency', 'Monthly Budget']
         self.spending_cat_info = {}
+
+    def get_category_summary_info(self):
+        self.df_actor.get_category_summary_info
 
     def get_spending_cat_info_headings(self):
         return self.spending_cat_info_headings

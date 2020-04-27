@@ -40,6 +40,12 @@ class RegistrationForm(FlaskForm):
 class UploadForm(FlaskForm):
     file=FileField(validators=[FileRequired(), FileAllowed(Config.ALLOWED_EXTENSIONS, 'unrecognized file type')])
 
+class FileAdminForm(FlaskForm):
+    files = SelectField('File Info')
+    select = SubmitField('select file')
+    delete = SubmitField('delete file')
+    delete_all = SubmitField('delete all')
 
 class MonthlyDetailForm(FlaskForm):
     pass
+

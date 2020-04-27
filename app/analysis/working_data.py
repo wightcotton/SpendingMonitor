@@ -4,26 +4,11 @@ import xlrd
 import numpy as np
 import math
 from app.analysis.wrangle_categories import Category_Whisperer
-from app.models import UploadedFile
+from app.models import UploadedFile, User
 from app import db
 from io import BytesIO
 
 
-class File_Helper(object):
-    def __init__(self):
-        pass
-
-    def set_file(self, filename, data, user_id):
-        uploaded_file = UploadedFile(filename=filename, data=data, user_id=user_id)
-        db.session.add(uploaded_file)
-        db.session.commit()
-
-    def get_file_info(self, user_id):
-        file = UploadedFile.query.filter_by(user_id=user_id).order_by(UploadedFile.timestamp.desc()).first()
-        file_info = None
-        if file is not None:
-            file_info = [file.filename, file.timestamp, file.data]
-        return file_info
 
 
 class Transactions(object):
