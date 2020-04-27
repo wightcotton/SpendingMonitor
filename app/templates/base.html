@@ -12,7 +12,11 @@
              |
             <a href="{{ url_for('spending_analysis') }}">Spending Analysis</a>
              |
+            <a href="{{ url_for('category_analysis') }}">Category Analysis</a>
+             |
             <a href="{{ url_for('upload_file') }}">Upload</a>
+             |
+            <a href="{{ url_for('file_admin') }}">Existing Files </a>
              |
             {% if current_user.is_anonymous %}
             <a href="{{ url_for('login') }}">Login</a>

@@ -1,11 +1,10 @@
 from flask import render_template, flash, redirect, url_for, request, session
 from app import app, db
 from config import Config
-from app.forms import LoginForm, RegistrationForm, UploadForm, HomeForm
+from app.forms import LoginForm, RegistrationForm, UploadForm, HomeForm, FileAdminForm
 from flask_login import current_user, login_user, logout_user, login_required
 from app.models import User, UploadedFile
-from app.analysis.working_data import File_Helper
-from app.analysis.trans_info_request import TransInfo
+from app.analysis.info_request_interface import InfoRequestHandler
 from app.old_working_data import DataObjectFactory_old
 from werkzeug.urls import url_parse
 from werkzeug.utils import secure_filename
@@ -17,10 +16,10 @@ from datetime import date
 @login_required
 def index():
     form = HomeForm()
-    info_requester = TransInfo(current_user.id)
-    file_info = info_requester.get_file_info()
-    if file_info is None:
-        return redirect(url_for('upload_file'))
+    info_requester = InfoRequestHandler(current_user.id)
+    file_info = info_requester.get_source_details()
+    if not file_info:
+        return redirect(url_for('upload_file')) # someday need to abstract this
     return render_template('index.html',
                            file_info=[file_info[0], file_info[1]],
                            title='Home',
@@ -28,28 +27,40 @@ def index():
                            spending_summary_info=info_requester.get_summary_spending_info())
 
 
+@app.route('/category_analysis', methods=['GET', 'POST'])
+@login_required
+def category_analysis():
+    form = FileAdminForm()
+    info_requester = InfoRequestHandler(current_user.id)
+    file_info = info_requester.get_source_details()
+    if not file_info:
+        return redirect(url_for('upload_file')) # someday need to abstract this
+    return render_template('category_details.html',
+                           file_info=[file_info[0], file_info[1]],
+                           title='Category Analysis',
+                           today=date.today(),
+                           category_summary_info=info_requester.get_category_summary_info())
+
+
 @app.route('/spending_analysis', methods=['GET', 'POST'])
 @login_required
 def spending_analysis():
-    file = File_Helper()
-    file_info = file.get_file_info(current_user.id)
+    info_requester = InfoRequestHandler(current_user.id)
+    file_info = info_requester.get_source_details()
     if not file_info:
-        return redirect(url_for('upload_file'))
-    trans = file.get_trans()
+        return redirect(url_for('upload_file')) # someday need to abstract this
     # spending summary
     return render_template('spending_analysis.html',
                            file_info=[file_info[0], file_info[1]],
                            title='Home',
-                           today=date.today(),
-                           cat_info_headings=trans.get_spending_cat_info_headings(),
-                           cat_info=trans.get_spending_cat_info_by(1))
+                           today=date.today())
 
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     # for now, just have this user and do not allow people to register but still have to login
     db.session.query(User).filter(User.username == 'bob').delete(synchronize_session=False)
-    #clean up old users, TODO build user admin page
+    # clean up old users, TODO build user admin page and file admin
     default_user = User(username='bob', email='b@bibbbo.com')
     default_user.set_password('time_flies!!!!')
     db.session.add(default_user)
@@ -95,15 +106,43 @@ def register():
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in Config.ALLOWED_EXTENSIONS
 
+
 @app.route('/upload_file', methods=['GET', 'POST'])
 @login_required
 def upload_file():
     form = UploadForm()
+    info_requester = InfoRequestHandler(current_user.id)
+    file_info = info_requester.get_source_details()
     if form.validate_on_submit():
         filename = secure_filename(form.file.data.filename)
         data = form.file.data.read()
-        file_helper = File_Helper()
-        file_helper.set_file(filename, data, user_id=current_user.id)
+        file_id = info_requester.add_new_source([filename, data])
+        info_requester.set_recent_source_details([file_id])
         return redirect(url_for('index'))
     return render_template('upload_file.html', title='Upload file with budget data', form=form,
-                           file_info=['pending', ''])
+                           file_info=file_info)
+
+
+@app.route('/file_admin', methods=['GET', 'POST'])
+@login_required
+def file_admin():
+    form = FileAdminForm()
+    info_requester = InfoRequestHandler(current_user.id)
+    file_info = info_requester.get_source_details()
+    if not file_info:
+        return redirect(url_for('upload_file')) # someday need to abstract this
+    form.files.choices = [(f.id, f.filename + "; " + str(f.uploaded_timestamp)) for f in info_requester.get_source_list()]
+    file_info = info_requester.get_source_details()
+    if request.method == 'POST':
+        if form.select.data:
+            info_requester.set_recent_source_details([int(form.files.data)])
+        elif form.delete.data:
+            info_requester.delete_source([int(form.files.data)])
+        elif form.delete_all.data:
+            info_requester.delete_all_sources()
+            return redirect(url_for('upload_file'))
+        return redirect(url_for('index'))
+    return render_template('file_admin.html',
+                           title='files...',
+                           form=form,
+                           file_info = file_info)

@@ -1,15 +1,23 @@
+from app.models import UploadedFile, User
 from io import BytesIO
-
+from app import db
 import pandas as pd
 import numpy as np
 from datetime import date
 import math
-from app.analysis.working_data import File_Helper
 
-
-class DataFrameFactory(object):
+class File_Upload(object):
     def __init__(self, user_id):
-        self.file_info = File_Helper().get_file_info(user_id)
+        self.user_id = user_id
+        user = User.query.filter_by(id=user_id).first()
+        file = None
+        if user.recent_file_id is not None:
+            file = UploadedFile.query.filter_by(id=user.recent_file_id).first()  # user has uploaded file previously
+        # else: # check to see of there are other uploaded files - this is a double check, shouldn't get here
+        # file = UploadedFile.query.filter_by(user_id=user_id).order_by(UploadedFile.timestamp.desc()).first() # no files uploaded
+        self.file_info = None
+        if file is not None:
+            self.file_info = [file.filename, file.uploaded_timestamp, file.data]
         self.trans_df_actor = None
         if self.file_info is not None:
             if '.csv' in self.file_info[0]:
@@ -20,12 +28,40 @@ class DataFrameFactory(object):
                 raise Exception("unknown file type")
             self.trans_df_actor = DataFrameActor(self.trans_df)
 
-    def get_file_info(self):
-        # just return file name and datetime
-        return None if self.file_info is None else self.file_info[0:2]
+    def add_new_file(self, file_details_list):
+        uploaded_file = UploadedFile(filename=file_details_list[0],
+                                     data=file_details_list[1],
+                                     user_id=self.user_id)
+        db.session.add(uploaded_file)
+        db.session.commit()
+        return uploaded_file.id
 
-    def get_trans_df_actor(self):
-        return None if self.trans_df_actor is None else self.trans_df_actor
+    def set_recent_file(self, list):
+        user = User.query.filter_by(id=self.user_id).first()
+        user.recent_file_id = list[0]
+        db.session.add(user)
+        db.session.commit()
+
+    def get_file_details(self):
+        # just return file name and timestamp
+        return self.file_info[0:2] if self.file_info is not None else None
+
+    def get_files(self):
+        files = UploadedFile.query.filter_by(user_id=self.user_id).order_by(UploadedFile.uploaded_timestamp.desc()).all()
+        return files
+
+    def delete_files(self):
+        for f in UploadedFile.query.filter_by(user_id=self.user_id):
+            db.session.delete(f)
+            db.session.commit()
+
+    def delete_file(self, list):
+        file = UploadedFile.query.filter_by(id=list[0]).first()
+        db.session.delete(file)
+        db.session.commit()
+
+    def get_actor(self):
+        return self.trans_df_actor if self.trans_df_actor is not None else None
 
 
 class DataFrameActor(object):
@@ -48,111 +84,15 @@ class DataFrameActor(object):
         self.number_of_months = len(self.df['MthYr'].unique())  # returns int
         self.categories = self.df['Category'].unique().tolist()  # returns list
         self.entries_by_cat = self.df.groupby(['Category'])  # returns groupby object
-        self.category_info_df = self.create_category_info_df()
+        self.cat_df_actor = CategoryDFActor(self.df)
         #        for index, value in self.df.groupby(['Year', 'Month', 'Category'])['Amount'].sum().iteritems():
         #            print( str(index[0]) + '; ' + str(value))
-        self.entries_by_cat.sum()
-        self.number_of_entries_by_cat = None
-        self.total_by_cat = None
-        self.mean_by_cat = None
-        self.credit_entries = None
-        self.number_of_credit_entries = None
-        self.entries_with_amounts_over_by_cat = None
-        self.number_of_entries_with_amounts_over = None
-        self.last_12_months = None
-        self.last_12_months_total = None
-        self.last_12_months_entries = None
-        self.last_year = None
-        self.last_year_total = None
-        self.last_year_entries = None
-        self.this_year = None
-        self.this_year_total = None
-        self.this_year_entries = None
-        self.last_qtr = None
-        self.last_qtr_total = None
-        self.this_qtr = None
-        self.this_qtr_total = None
-        self.last_month = None
-        self.last_month_total = None
-        self.this_month = None
-        self.this_month_total = None
-
-        # need to expose these tolerances to allow for analysis within web site to figure out best levels to discriminate among categories
-        # expense categories have a majority of entries where money goes out (for mint, transaction type is debit)
-        # income categories have a majority of entries where money come in (for mint, transaction type is credit)
-        # investment categories have a ??
-        # continuous categories have entries at least once a month
-        # sporadic categories have entries less than once a month up to once a half year
-        # rare categories have entries that happen less than once a half year
-        # consistent means the entry amounts are within one standard deviation of one another
-        # variable are not consistent
-        # categories must be in one and only one category
-        # lists of these kinds of categories must be available to create subset of full dataframe based on those categories
-        # 1. create a dataframe containing a row for each category (combine 1 and 2?)
-        # 2. create columns for summarized base info from category entries that can be used to determine these key attributes of categories
-        # 3. create indicator columns that can be used to determine the kind of category as functions of the summarized base info
-        #   and derive stats about categories
-        # 4. get lists conntaining appropriate categories from some kind of dataframe operation to get the subset of categories in a list
-
-    def create_category_info_df(self):
-        temp_category_group_obj = self.df.groupby(['Category'])['Amount']
-        entries_count_by_category_series = temp_category_group_obj.count()
-        entries_amount_total_category_series = temp_category_group_obj.sum()
-        debit_entries_count_series = self.df.loc[self.df['Transaction Type'] == 'debit'].groupby(['Category'])['Amount'
-        ].count()
-        large_entries_count_series = self.df.loc[self.df['Amount'] > 7500].groupby(['Category'])['Amount'].count()
-        temp_df = pd.concat([entries_count_by_category_series,
-                             entries_amount_total_category_series,
-                             large_entries_count_series,
-                             debit_entries_count_series],
-                            axis=1)
-        temp_df.set_axis(['count', 'sum', 'large', 'debit'], axis=1, inplace=True)
-        temp_df['large_percent'] = temp_df['large'] / temp_df['count']
-        temp_df['debit_percent'] = temp_df['debit'] / temp_df['count']
-        temp_df['category_type'] = temp_df['debit_percent'].map(lambda cp: 'expense' if cp > .6 else 'income')
-        temp_df['frequency'] = temp_df['count'].map(
-            lambda c: self.determine_frequency_descriptor(self.number_of_months, c))
-        return temp_df
-
-    def get_category_types(self):
-        return ['expense', 'income', 'investment']
-
-    def determine_frequency_descriptor(self, total_number_of_months_in_df, cat_entries):
-        naive_actual_frequency = cat_entries / total_number_of_months_in_df
-        # value of 1 equals one cat entry per month
-        # value of 4 equals one per week
-        if cat_entries < 5:
-            return 'rare'
-        elif naive_actual_frequency > 4:
-            return 'weekly'
-        elif naive_actual_frequency > .9:
-            return 'monthly'
-        elif naive_actual_frequency > .6:
-            return 'quarterly'
-        else:
-            return 'sporadic'
-
-    def get_spending_category_frequencies(self):
-        return ['all_spending', 'weekly', 'monthly', 'quarterly', 'sporadic', 'rare']
 
     def get_subset_df(self, cat_type, frequency):
         if cat_type is None and frequency is None:
             return self.df
-        if cat_type == 'expense':
-            if frequency == 'all_spending':  # get all categories for that type
-                selected_categories = self.category_info_df.loc[(self.category_info_df['category_type'] == cat_type)].index.tolist()
-            else:
-                # need to include check to see if frequency in spending categories list
-                selected_categories = self.category_info_df.loc[((self.category_info_df['category_type'] == cat_type)
-                                                                 & (self.category_info_df[
-                                                                        'frequency'] == frequency))].index.tolist()
-        elif cat_type == 'income':
-            pass
-        elif cat_type == 'investment':
-            pass
         else:
-            raise Exception('no such category type:' + cat_type)
-        return self.df.loc[self.df['Category'].isin(selected_categories)]
+            return self.df.loc[self.df['Category'].isin(self.cat_df_actor.get_categories(cat_type, frequency))]
 
     def get_entries_by_cat(self):
         # returns a dataframe grouped by Category
@@ -189,12 +129,11 @@ class DataFrameActor(object):
         #                                           ...                               ],
         #                          ['Weekly' ['last year', spending, budget, percent spent]]]
         ret = []
-        frequencies = self.get_spending_category_frequencies()
+        frequencies = self.cat_df_actor.get_spending_category_frequencies()
         for freq in frequencies:
             temp_df = self.get_subset_df('expense', freq)
             ret.append([freq, len(temp_df['Category'].unique().tolist()), self.get_summary_info_for(temp_df)])
         return ret
-
 
     def get_summary_info_for(self, temp_df):
         # return list of lists containing summary info for last year, last 12 months, this year, etc...
@@ -227,20 +166,82 @@ class DataFrameActor(object):
                     '${:,.2f}'.format(monthly_budget * 12),
                     '{:,.2f}%'.format(percent_budget)]
 
+    def get_category_summary_info(self):
+        return self.cat_df_actor.get_category_summary_info()
 
-class SpendingDFActor(DataFrameActor):
-    def __init__(self, df):
-        super(df)
 
-    # results based on analysis of basic facts
-    def get_monthly_budget(self, cat):
-        # naive budget is average of spending by cat divided by number of months
-        return self.get_total_by_cat()['Amount'][cat] / self.get_number_of_months()
+class CategoryDFActor():
+    # need to expose these tolerances to allow for analysis within web site to figure out best levels to discriminate among categories
+    # expense categories have a majority of entries where money goes out (for mint, transaction type is debit)
+    # income categories have a majority of entries where money come in (for mint, transaction type is credit)
+    # investment categories have a ??
+    # continuous categories have entries at least once a month
+    # sporadic categories have entries less than once a month up to once a half year
+    # rare categories have entries that happen less than once a half year
+    # consistent means the entry amounts are within one standard deviation of one another
+    # variable are not consistent
+    # categories must be in one and only one category
+    # lists of these kinds of categories must be available to create subset of full dataframe based on those categories
+    # 1. create a dataframe containing a row for each category (combine 1 and 2?)
+    # 2. create columns for summarized base info from category entries that can be used to determine these key attributes of categories
+    # 3. create indicator columns that can be used to determine the kind of category as functions of the summarized base info
+    #   and derive stats about categories
+    # 4. get lists conntaining appropriate categories from some kind of dataframe operation to get the subset of categories in a list
+    def __init__(self, full_df):
+        # category dataframe is derived from dataframe containing all the transactions
+        temp_category_group_obj = full_df.groupby(['Category'])['Amount']
+        entries_count_by_category_series = temp_category_group_obj.count()
+        entries_amount_total_category_series = temp_category_group_obj.sum()
+        debit_entries_count_series = full_df.loc[full_df['Transaction Type'] == 'debit'].groupby(['Category'])['Amount'].count()
+        large_entries_count_series = full_df.loc[full_df['Amount'] > 5000].groupby(['Category'])['Amount'].count()
+        self.cat_df = pd.concat([entries_count_by_category_series,
+                             entries_amount_total_category_series,
+                             large_entries_count_series,
+                             debit_entries_count_series],
+                            axis=1)
+        self.cat_df.set_axis(['count', 'sum', 'large', 'debit'], axis=1, inplace=True)
+        self.cat_df['large_percent'] = self.cat_df['large'] / self.cat_df['count']
+        self.cat_df['debit_percent'] = self.cat_df['debit'] / self.cat_df['count']
+        # create false mutual exclusity among the three cat types - check for investment first to eliminate those from spending
+        self.cat_df['category_type'] = self.cat_df.apply(self.det_cat, axis=1)
+        self.number_of_months = len(full_df['MthYr'].unique())
+        self.cat_df['frequency'] = self.cat_df['count'].map(lambda f: f / self.number_of_months)
+        self.cat_df['frequency_category'] = self.cat_df.apply(self.det_freq_cat, axis=1)
 
-    def get_monthly_frequency(self, cat):
-        # mean of the number of entries for a category by month
-        return self.get_number_of_entries_by_cat()['Amount'][cat] / self.get_number_of_months()
+    # category summary info is list of categories with calculated values in category_info_df
 
-    def get_ave_entry_spending_amount(self, cat):
-        # the average amount spent per entry in a category
-        return self.get_total_by_cat()['Amount'][cat] / self.get_number_of_entries_by_cat()['Amount'][cat]
+    def get_category_summary_info(self):
+        return self.cat_df
+
+    def det_cat(self, row):
+        return 'investment' if row['large_percent'] > .4 else 'expense' if row['debit_percent'] > .6 else 'income'
+
+    def get_category_types(self):
+        return ['investment', 'expense', 'income']
+
+    def det_freq_cat(self, row):
+        naive_actual_frequency = row['count'] / self.number_of_months
+        # value of 1 equals one cat entry per month
+        # value of 4 equals one per week
+        if row['count'] < 5:
+            return 'rare'
+        elif naive_actual_frequency > 3:
+            return 'weekly'
+        elif naive_actual_frequency > 1.75:
+            return 'biweekly'
+        elif naive_actual_frequency > .9:
+            return 'monthly'
+        elif naive_actual_frequency > .7:
+            return 'quarterly'
+        else:
+            return 'sporadic'
+
+    def get_spending_category_frequencies(self):
+        return ['all_spending', 'weekly', 'biweekly', 'monthly', 'quarterly', 'sporadic', 'rare']
+
+    def get_categories(self, category_type, frequency):
+        if frequency == 'all_spending':  # get all categories for that type
+            return self.cat_df.loc[(self.cat_df['category_type'] == category_type)].index.tolist()
+        else:
+            # need to include check to see if frequency in spending categories list
+            return self.cat_df.loc[((self.cat_df['category_type'] == 'expense') & (self.cat_df['frequency_category'] == frequency))].index.tolist()
