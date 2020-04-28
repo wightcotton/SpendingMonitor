@@ -65,7 +65,7 @@ class File_Upload(object):
 
 
 class DataFrameActor(object):
-    # all actions against df happen here and in children
+    #
     def __init__(self, df):
         self.df = df
         self.df['Date'] = pd.to_datetime(self.df['Date'])
@@ -77,20 +77,11 @@ class DataFrameActor(object):
         # orient amounts toward spending - what is spend is a positive number
         self.df["normalizer"] = [1 if x == 'debit' else -1 for x in self.df["Transaction Type"]]
         self.df['Amount'] = self.df['Amount'] * self.df['normalizer']
-        self.number_of_entries = self.df.count()['Amount']  # returns int64
-        self.total_amount = self.df["Amount"].sum()  # returns float64
-        self.months = self.df.Month.unique().tolist()  # returns Series
-        self.years = sorted(self.df['Year'].unique())  # returns list
-        self.number_of_months = len(self.df['MthYr'].unique())  # returns int
-        self.categories = self.df['Category'].unique().tolist()  # returns list
-        self.entries_by_cat = self.df.groupby(['Category'])  # returns groupby object
         self.cat_df_actor = CategoryDFActor(self.df)
-        #        for index, value in self.df.groupby(['Year', 'Month', 'Category'])['Amount'].sum().iteritems():
-        #            print( str(index[0]) + '; ' + str(value))
 
-    def get_subset_df(self, cat_type, frequency):
-        if cat_type is None and frequency is None:
-            return self.df
+    def get_subset_df(self, cat_type, frequency=None):
+        if frequency is None:
+            return self.df.loc[self.df['Category'].isin(self.cat_df_actor.get_categories(cat_type))]
         else:
             return self.df.loc[self.df['Category'].isin(self.cat_df_actor.get_categories(cat_type, frequency))]
 
@@ -132,34 +123,38 @@ class DataFrameActor(object):
         frequencies = self.cat_df_actor.get_spending_category_frequencies()
         for freq in frequencies:
             temp_df = self.get_subset_df('expense', freq)
-            ret.append([freq, len(temp_df['Category'].unique().tolist()), self.get_summary_info_for(temp_df)])
+            monthly_budget = self.cat_df_actor.get_budget_for( 'expense', freq )
+            ret.append([freq, len(temp_df['Category'].unique().tolist()), self.get_summary_info_for(temp_df, monthly_budget)])
         return ret
 
-    def get_summary_info_for(self, temp_df):
+    def get_summary_info_for(self, temp_df, monthly_budget):
         # return list of lists containing summary info for last year, last 12 months, this year, etc...
         ret = []
+        # useful intermediate values
         # ['all trans', 'for last year', 'this year', 'last qtr', 'this qtr', 'last month', 'this month']
-        ret.append(self.get_summary_detail('all trans', temp_df))
-        ret.append(self.get_summary_detail('last year', temp_df.loc[temp_df['Year'] == str(date.today().year - 1)]))
+#        ret.append(self.get_summary_detail('all trans', temp_df))
+        ret.append(self.get_summary_detail('last year', temp_df.loc[temp_df['Year'] == str(date.today().year - 1)], monthly_budget))
         ret.append(self.get_summary_detail('last 12 months', temp_df.loc[
             ((temp_df['Month_as_dec'] < date.today().month) & (temp_df["Year"] == str(date.today().year)))
-            | ((temp_df["Year"] == date.today().year - 1) & (temp_df['Month_as_dec'] >= date.today().month))]))
-        ret.append(self.get_summary_detail('this year', temp_df.loc[temp_df["Year"] == str(date.today().year)] ))
+            | ((temp_df["Year"] == str(date.today().year - 1)) & (temp_df['Month_as_dec'] >= date.today().month))], monthly_budget))
+        ret.append(self.get_summary_detail('this year', temp_df.loc[temp_df["Year"] == str(date.today().year)], monthly_budget))
 
         current_qtr = math.ceil(date.today().month / 3.)
         temp_yr = date.today().year - 1 if current_qtr == 1 else date.today().year
         temp_qtr = 4 if current_qtr == 1 else current_qtr - 1
-        ret.append(self.get_summary_detail('last quarter', temp_df.loc[((temp_df['Year'] == str(temp_yr)) & (temp_df["Qtr"] == temp_qtr))] ))
-        ret.append(self.get_summary_detail('this quarter', temp_df.loc[((temp_df['Year'] == str(date.today().year)) & (temp_df["Qtr"] == current_qtr))]))
+        ret.append(self.get_summary_detail('last quarter', temp_df.loc[((temp_df['Year'] == str(temp_yr)) & (temp_df["Qtr"] == temp_qtr))], monthly_budget))
+        ret.append(self.get_summary_detail('this quarter', temp_df.loc[((temp_df['Year'] == str(date.today().year)) & (temp_df["Qtr"] == current_qtr))], monthly_budget))
         temp_yr = date.today().year - 1 if date.today().month == 1 else date.today().year
         temp_month = 12 if date.today().month == 1 else date.today().month - 1
-        ret.append(self.get_summary_detail('last month', temp_df.loc[((self.df['Year'] == str(temp_yr)) & (temp_df["Month_as_dec"] == temp_month))]))
-        ret.append(self.get_summary_detail('this month', temp_df.loc[((self.df['Year'] == str(date.today().year)) & (temp_df["Month_as_dec"] == date.today().month))]))
+        ret.append(self.get_summary_detail('last month', temp_df.loc[((self.df['Year'] == str(temp_yr)) & (temp_df["Month_as_dec"] == temp_month))], monthly_budget))
+        ret.append(self.get_summary_detail('this month', temp_df.loc[((self.df['Year'] == str(date.today().year)) & (temp_df["Month_as_dec"] == date.today().month))], monthly_budget))
         return ret
 
-    def get_summary_detail(self, name, detail_df):
-        monthly_budget = detail_df['Amount'].sum() / self.number_of_months
+    def get_summary_detail(self, name, detail_df, monthly_budget):
         total_spending = detail_df['Amount'].sum()
+        number_of_months = len(detail_df['MthYr'].unique())  # returns int
+        quarterly_budget = monthly_budget * 4
+        annual_budget = monthly_budget * 12
         percent_budget = total_spending / (monthly_budget * 12) * 100
         return [name, detail_df['Amount'].count(),
                     '${:,.2f}'.format(total_spending),
@@ -200,14 +195,15 @@ class CategoryDFActor():
                              debit_entries_count_series],
                             axis=1)
         self.cat_df.set_axis(['count', 'sum', 'large', 'debit'], axis=1, inplace=True)
+        self.number_of_months = len(full_df['MthYr'].unique())
+        self.cat_df['ave_mnthly_spend'] = self.cat_df['sum'].map(lambda s: s / self.number_of_months)
         self.cat_df['large_percent'] = self.cat_df['large'] / self.cat_df['count']
         self.cat_df['debit_percent'] = self.cat_df['debit'] / self.cat_df['count']
         # create false mutual exclusity among the three cat types - check for investment first to eliminate those from spending
         self.cat_df['category_type'] = self.cat_df.apply(self.det_cat, axis=1)
-        self.number_of_months = len(full_df['MthYr'].unique())
         self.cat_df['frequency'] = self.cat_df['count'].map(lambda f: f / self.number_of_months)
         self.cat_df['frequency_category'] = self.cat_df.apply(self.det_freq_cat, axis=1)
-
+        self.temp_type_freq_group = self.cat_df.groupby(['category_type', 'frequency_category'])
     # category summary info is list of categories with calculated values in category_info_df
 
     def get_category_summary_info(self):
@@ -237,11 +233,16 @@ class CategoryDFActor():
             return 'sporadic'
 
     def get_spending_category_frequencies(self):
-        return ['all_spending', 'weekly', 'biweekly', 'monthly', 'quarterly', 'sporadic', 'rare']
+        return ['weekly', 'biweekly', 'monthly', 'quarterly', 'sporadic', 'rare']
 
-    def get_categories(self, category_type, frequency):
-        if frequency == 'all_spending':  # get all categories for that type
+    def get_categories(self, category_type, frequency=None):
+        if frequency is None:
+            return self.cat_df.loc[(self.cat_df['category_type'] == category_type)].index.tolist()
+        elif frequency == 'all_spending':  # get all categories for that type
             return self.cat_df.loc[(self.cat_df['category_type'] == category_type)].index.tolist()
         else:
             # need to include check to see if frequency in spending categories list
             return self.cat_df.loc[((self.cat_df['category_type'] == 'expense') & (self.cat_df['frequency_category'] == frequency))].index.tolist()
+
+    def get_budget_for(self, category_type, freq):
+        return self.temp_type_freq_group['ave_mnthly_spend'].sum()[category_type, freq]
