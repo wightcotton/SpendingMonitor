@@ -15,6 +15,9 @@ flask-login = "*"
 pandas = "*"
 flask-session = "*"
 xlrd = "*"
+wtforms-validators = "*"
+validators = "*"
+psycopg2 = "*"
 
 [requires]
 python_version = "3.7"
