@@ -4,6 +4,7 @@ from flask_login import UserMixin
 import datetime
 
 class User(UserMixin, db.Model):
+    __tablename__ = 'user'
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(64), index=True, unique=True)
     email = db.Column(db.String(120), index=True, unique=True)
@@ -24,11 +25,12 @@ def load_user(id):
     return User.query.get(int(id))
 
 class UploadedFile(db.Model):
+    __tablename__ = 'uploaded_file'
     id = db.Column(db.Integer, primary_key=True)
     filename = db.Column(db.String(64))
     data = db.Column(db.LargeBinary)
-    uploaded_timestamp = db.Column(db.DATETIME, index=True, default=datetime.datetime.utcnow())
-    file_last_modified_dt = db.Column(db.DATETIME)
+    uploaded_timestamp = db.Column(db.TIMESTAMP, index=True, default=datetime.datetime.now())
+    file_last_modified_dt = db.Column(db.TIMESTAMP)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
 
     def __repr__(self):
