@@ -59,8 +59,14 @@ class InfoRequestHandler(object):
         return self.actor.get_category_summary_info().sort_values(['category_type', 'frequency'], ascending=False)\
             .to_html(float_format=lambda f: '{:,.2f}'.format(f))
 
+    def get_columns_for_spending(self):
+        return self.actor.get_columns_for_spending()
+
     def get_summary_info(self):
         return self.actor.get_summary_info()
+
+    def get_summary_of_all_spending(self):
+        return self.actor.get_summary_of_all_spending()
 
     def get_summary_spending_info(self):
         return self.actor.get_summary_spending_info()

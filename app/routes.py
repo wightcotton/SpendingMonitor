@@ -24,6 +24,8 @@ def index():
                            file_info=[file_info[0], file_info[1]],
                            title='Home',
                            today=date.today(),
+                           columns=info_requester.get_columns_for_spending(),
+                           topline_spending_summary=info_requester.get_summary_of_all_spending(),
                            spending_summary_info=info_requester.get_summary_spending_info())
 
 
@@ -59,12 +61,14 @@ def spending_analysis():
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     # for now, just have this user and do not allow people to register but still have to login
+    '''
     db.session.query(User).filter(User.username == 'bob').delete(synchronize_session=False)
     # clean up old users, TODO build user admin page and file admin
-    default_user = User(username='bob', email='b@bibbbo.com')
+    # default_user = User(username='bob', email='b@bibbbo.com')
     default_user.set_password('time_flies!!!!')
     db.session.add(default_user)
     db.session.commit()
+    '''
     if current_user.is_authenticated:
         return redirect(url_for('index'))
     form = LoginForm()
