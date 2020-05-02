@@ -114,6 +114,12 @@ class DataFrameActor(object):
     def get_summary_info(self):
         return [['All Transaction', self.df.index.tolist(), self.get_summary_info_for(self.df)]]
 
+    def get_summary_of_all_spending(self):
+        temp_df = self.get_subset_df('expense')
+        number_of_months = len(temp_df['MthYr'].unique())
+        monthly_budget = temp_df['Amount'].sum() / number_of_months
+        return [['All Spending', len(temp_df['Category'].unique().tolist()), self.get_summary_info_for(temp_df, monthly_budget)]]
+
     def get_summary_spending_info(self):
         # return a list of lists: [['Total' ['last year', spending, budget, percent spent],
         #                                 ['last 12', spending, budget, percent spent],
@@ -127,38 +133,45 @@ class DataFrameActor(object):
             ret.append([freq, len(temp_df['Category'].unique().tolist()), self.get_summary_info_for(temp_df, monthly_budget)])
         return ret
 
+    def get_columns_for_spending(self):
+        return ['Period', 'Count', 'Amount', 'Track']
+
     def get_summary_info_for(self, temp_df, monthly_budget):
         # return list of lists containing summary info for last year, last 12 months, this year, etc...
         ret = []
         # useful intermediate values
         # ['all trans', 'for last year', 'this year', 'last qtr', 'this qtr', 'last month', 'this month']
 #        ret.append(self.get_summary_detail('all trans', temp_df))
-        ret.append(self.get_summary_detail('last year', temp_df.loc[temp_df['Year'] == str(date.today().year - 1)], monthly_budget))
+        budget = monthly_budget * 12
+        ret.append(self.get_summary_detail('last year', temp_df.loc[temp_df['Year'] == str(date.today().year - 1)], budget))
+
         ret.append(self.get_summary_detail('last 12 months', temp_df.loc[
             ((temp_df['Month_as_dec'] < date.today().month) & (temp_df["Year"] == str(date.today().year)))
-            | ((temp_df["Year"] == str(date.today().year - 1)) & (temp_df['Month_as_dec'] >= date.today().month))], monthly_budget))
-        ret.append(self.get_summary_detail('this year', temp_df.loc[temp_df["Year"] == str(date.today().year)], monthly_budget))
+            | ((temp_df["Year"] == str(date.today().year - 1)) & (temp_df['Month_as_dec'] >= date.today().month))], budget))
 
+        ret.append(self.get_summary_detail('this year', temp_df.loc[temp_df["Year"] == str(date.today().year)], budget))
+
+        budget = monthly_budget * 4
         current_qtr = math.ceil(date.today().month / 3.)
         temp_yr = date.today().year - 1 if current_qtr == 1 else date.today().year
         temp_qtr = 4 if current_qtr == 1 else current_qtr - 1
-        ret.append(self.get_summary_detail('last quarter', temp_df.loc[((temp_df['Year'] == str(temp_yr)) & (temp_df["Qtr"] == temp_qtr))], monthly_budget))
-        ret.append(self.get_summary_detail('this quarter', temp_df.loc[((temp_df['Year'] == str(date.today().year)) & (temp_df["Qtr"] == current_qtr))], monthly_budget))
+        ret.append(self.get_summary_detail('last quarter', temp_df.loc[((temp_df['Year'] == str(temp_yr)) & (temp_df["Qtr"] == temp_qtr))], budget))
+
+        ret.append(self.get_summary_detail('this quarter', temp_df.loc[((temp_df['Year'] == str(date.today().year)) & (temp_df["Qtr"] == current_qtr))], budget))
         temp_yr = date.today().year - 1 if date.today().month == 1 else date.today().year
         temp_month = 12 if date.today().month == 1 else date.today().month - 1
-        ret.append(self.get_summary_detail('last month', temp_df.loc[((self.df['Year'] == str(temp_yr)) & (temp_df["Month_as_dec"] == temp_month))], monthly_budget))
-        ret.append(self.get_summary_detail('this month', temp_df.loc[((self.df['Year'] == str(date.today().year)) & (temp_df["Month_as_dec"] == date.today().month))], monthly_budget))
+
+        budget=monthly_budget
+        ret.append(self.get_summary_detail('last month', temp_df.loc[((self.df['Year'] == str(temp_yr)) & (temp_df["Month_as_dec"] == temp_month))], budget))
+
+        ret.append(self.get_summary_detail('this month', temp_df.loc[((self.df['Year'] == str(date.today().year)) & (temp_df["Month_as_dec"] == date.today().month))], budget))
         return ret
 
-    def get_summary_detail(self, name, detail_df, monthly_budget):
+    def get_summary_detail(self, name, detail_df, budget):
         total_spending = detail_df['Amount'].sum()
-        number_of_months = len(detail_df['MthYr'].unique())  # returns int
-        quarterly_budget = monthly_budget * 4
-        annual_budget = monthly_budget * 12
-        percent_budget = total_spending / (monthly_budget * 12) * 100
+        percent_budget = total_spending / budget * 100
         return [name, detail_df['Amount'].count(),
                     '${:,.2f}'.format(total_spending),
-                    '${:,.2f}'.format(monthly_budget * 12),
                     '{:,.2f}%'.format(percent_budget)]
 
     def get_category_summary_info(self):

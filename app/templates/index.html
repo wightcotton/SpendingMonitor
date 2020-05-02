@@ -1,29 +1,44 @@
 {% extends "base.html" %}
 
 {% block content %}
-    Spending Summary as of {{ today }}<br>
-        {% for list in spending_summary_info %}
+    Topline Spending Summary as of {{ today }}<br>
+        {% for list in topline_spending_summary %}
             {{ list[0] }}, including  {{ list[1] }} categories
             <table border="1">
-            <tr>
-            <th>Period</th>
-            <th>Count</th>
-            <th>Amount Spent</th>
-            <th>Budget</th>
-            <th>% of Budget</th>
-        </tr>
+                <tr>
+                {% for c in columns %}
+                    <th>{{ c }}</th>
+                {% endfor %}
+                </tr>
             {% for l in list[2]%}
                 <tr>
                     <td>{{ l[0] }}</td>
                     <td>{{ l[1] }}</td>
                     <td>{{ l[2] }}</td>
                     <td>{{ l[3] }}</td>
-                    <td>{{ l[4] }}</td>
                 </tr>
             {% endfor %}
             </table>
         {% endfor %}
-    </table>
+    Spending Summary as of {{ today }}<br>
+        {% for list in spending_summary_info %}
+            {{ list[0] }}, including  {{ list[1] }} categories
+            <table border="1">
+                <tr>
+                {% for c in columns %}
+                    <th>{{ c }}</th>
+                {% endfor %}
+                </tr>
+            {% for l in list[2]%}
+                <tr>
+                    <td>{{ l[0] }}</td>
+                    <td>{{ l[1] }}</td>
+                    <td>{{ l[2] }}</td>
+                    <td>{{ l[3] }}</td>
+                </tr>
+            {% endfor %}
+            </table>
+        {% endfor %}
     <details>
 
 {% endblock %}
