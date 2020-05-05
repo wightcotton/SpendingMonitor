@@ -85,36 +85,46 @@ class DataFrameActor(object):
         else:
             return self.df.loc[self.df['Category'].isin(self.cat_df_actor.get_categories(cat_type, frequency))]
 
+
+    # general category info request - TODO are these really spending requests? right now they go against full dataframe
     def get_entries_by_cat(self):
         # returns a dataframe grouped by Category
-        if self.entries_by_cat is None:
-            self.entries_by_cat = self.df.groupby(['Category'])
-        return self.entries_by_cat
+        return self.df.groupby(['Category']) #probably need to change what the return value is?
 
     def get_number_of_entries_by_cat(self):
         # returns an int
-        if self.number_of_entries_by_cat is None:
-            self.number_of_entries_by_cat = self.get_entries_by_cat()['Amount'].count()
-        return self.number_of_entries_by_cat
+        return self.get_entries_by_cat()['Amount'].count()
 
-    def get_total_by_cat(self, df):
+    def get_total_by_cat(self):
         # returns an series?
-        if self.total_by_cat is None:
-            self.total_by_cat = self.get_entries_by_cat().sum()
-        return self.total_by_cat
+        return self.get_entries_by_cat().sum()
 
-    def get_mean_by_cat(self, df):
+    def get_mean_by_cat(self):
         # returns a series keyed by category of the mean size of amounts
-        if self.mean_by_cat is None:
-            self.mean_by_cat = self.get_entries_by_cat().mean()
-        return self.mean_by_cat
+        return self.get_entries_by_cat().mean()
+
+    # specific category info request - TODO are these really spending requests? right now they go against full dataframe
+    def get_detail_item_display_columns(self):
+        return ["Date", "Category",  "Amount", "Description"]  # eventually this will be a user setting
+
+    def get_recent_items_for(self, category, frequency):
+        # recent is this and last month, for now just this month
+        temp_df = self.get_subset_df(category, frequency)
+        # recent items are all items in the current month and last month
+        this_year = str(date.today().year)
+        this_month = date.today().month
+        # need to check if current month is january, then previous month is last year december
+        prev_month = 12 if this_month == 1 else this_month - 1
+        prev_year = this_year - 1 if prev_month == 12 else this_year
+        return temp_df.loc[((temp_df["Year"] == this_year) & (temp_df["Month_as_dec"] == this_month)) |
+                           ((temp_df["Year"] == prev_year) & (temp_df["Month_as_dec"] == prev_month)), self.get_detail_item_display_columns()].to_html()
 
     # summary info is [[name of summary group, [included category list], [[last year summary], [last 12 months], etc]]
 
     def get_summary_info(self):
         return [['All Transaction', self.df.index.tolist(), self.get_summary_info_for(self.df)]]
 
-    def get_summary_of_all_spending(self):
+    def get_top_line_spending_info(self):
         temp_df = self.get_subset_df('expense')
         number_of_months = len(temp_df['MthYr'].unique())
         monthly_budget = temp_df['Amount'].sum() / number_of_months
@@ -134,7 +144,7 @@ class DataFrameActor(object):
         return ret
 
     def get_columns_for_spending(self):
-        return ['Period', 'Count', 'Amount', 'Track']
+        return ['Period', 'Count', 'Amount', 'of ave spend']
 
     def get_summary_info_for(self, temp_df, monthly_budget):
         # return list of lists containing summary info for last year, last 12 months, this year, etc...

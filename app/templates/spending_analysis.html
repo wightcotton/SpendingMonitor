@@ -1,27 +1,25 @@
 {% extends "base.html" %}
 
 {% block content %}
-    <div>
-    <table border="'1'">
-            <th>Category</th>
-            {% for i in cat_info_headings %}
-            <th>
-                {{ i }}
-            </th>
-            {% endfor %}
-            {%  for i in cat_info %}
+    Spending Summary as of {{ today }}<br>
+        {% for list in spending_summary_info %}
+            {{ list[0] }}, including  {{ list[1] }} categories ( <a href="{{ url_for('monthly_detail', frequency=list[0]) }}">(details)</a>
+            <table border="1">
                 <tr>
-                    {%  for v in i %}
-                        <td>
-                            {{ v }}
-                        </td>
-                    {% endfor %}
+                {% for c in columns %}
+                    <th>{{ c }}</th>
+                {% endfor %}
+                </tr>
+            {% for l in list[2]%}
+                <tr>
+                    <td>{{ l[0] }}</td>
+                    <td>{{ l[1] }}</td>
+                    <td>{{ l[2] }}</td>
+                    <td>{{ l[3] }}</td>
                 </tr>
             {% endfor %}
-    </table>
-    </div>
-    {% for i in cat_info %}
+            </table>
+        {% endfor %}
     <details>
-    <summary></summary>
-    </details>
+
 {% endblock %}

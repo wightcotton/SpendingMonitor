@@ -66,12 +66,13 @@ class InfoRequestHandler(object):
         return self.actor.get_summary_info()
 
     def get_summary_of_all_spending(self):
-        return self.actor.get_summary_of_all_spending()
+        return self.actor.get_top_line_spending_info()
 
     def get_summary_spending_info(self):
         return self.actor.get_summary_spending_info()
 
-
+    def get_recent_items_for(self, category, frequency):
+        return self.actor.get_recent_items_for(category, frequency)
 
 class SpendingTransInfo(InfoRequestHandler):
     def __init__(self, user_id):
