@@ -1,9 +1,6 @@
 {% extends "base.html" %}
 
 {% block content %}
-    <h2>In {{ month }} {{ year }}, {{ category }} spending was {{ '${:,.2f}'.format(category_total) }}</h2>
-    {% for table in tables %}
-        {{ titles[loop.index] }}
-        {{ table | safe }}
-    {% endfor %}
+    <h3>{{ freq }}</h3>
+        {{ items | safe }}
 {% endblock %}

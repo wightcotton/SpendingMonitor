@@ -3,7 +3,7 @@
 {% block content %}
     Topline Spending Summary as of {{ today }}<br>
         {% for list in topline_spending_summary %}
-            {{ list[0] }}, including  {{ list[1] }} categories
+            {{ list[0] }}, including  {{ list[1] }} categories <a href="{{ url_for('spending_analysis') }}">(details)</a>
             <table border="1">
                 <tr>
                 {% for c in columns %}
@@ -20,25 +20,4 @@
             {% endfor %}
             </table>
         {% endfor %}
-    Spending Summary as of {{ today }}<br>
-        {% for list in spending_summary_info %}
-            {{ list[0] }}, including  {{ list[1] }} categories
-            <table border="1">
-                <tr>
-                {% for c in columns %}
-                    <th>{{ c }}</th>
-                {% endfor %}
-                </tr>
-            {% for l in list[2]%}
-                <tr>
-                    <td>{{ l[0] }}</td>
-                    <td>{{ l[1] }}</td>
-                    <td>{{ l[2] }}</td>
-                    <td>{{ l[3] }}</td>
-                </tr>
-            {% endfor %}
-            </table>
-        {% endfor %}
-    <details>
-
 {% endblock %}

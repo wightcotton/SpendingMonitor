@@ -11,24 +11,6 @@ from werkzeug.utils import secure_filename
 from datetime import date
 
 
-@app.route('/', methods=['GET', 'POST'])
-@app.route('/index', methods=['GET', 'POST'])
-@login_required
-def index():
-    form = HomeForm()
-    info_requester = InfoRequestHandler(current_user.id)
-    file_info = info_requester.get_source_details()
-    if not file_info:
-        return redirect(url_for('upload_file')) # someday need to abstract this
-    return render_template('index.html',
-                           file_info=[file_info[0], file_info[1]],
-                           title='Home',
-                           today=date.today(),
-                           columns=info_requester.get_columns_for_spending(),
-                           topline_spending_summary=info_requester.get_summary_of_all_spending(),
-                           spending_summary_info=info_requester.get_summary_spending_info())
-
-
 @app.route('/category_analysis', methods=['GET', 'POST'])
 @login_required
 def category_analysis():
@@ -44,18 +26,46 @@ def category_analysis():
                            category_summary_info=info_requester.get_category_summary_info())
 
 
-@app.route('/spending_analysis', methods=['GET', 'POST'])
+@app.route('/file_admin', methods=['GET', 'POST'])
 @login_required
-def spending_analysis():
+def file_admin():
+    form = FileAdminForm()
     info_requester = InfoRequestHandler(current_user.id)
     file_info = info_requester.get_source_details()
     if not file_info:
         return redirect(url_for('upload_file')) # someday need to abstract this
-    # spending summary
-    return render_template('spending_analysis.html',
+    form.files.choices = [(f.id, f.filename + "; " + str(f.uploaded_timestamp)) for f in info_requester.get_source_list()]
+    file_info = info_requester.get_source_details()
+    if request.method == 'POST':
+        if form.select.data:
+            info_requester.set_recent_source_details([int(form.files.data)])
+        elif form.delete.data:
+            info_requester.delete_source([int(form.files.data)])
+        elif form.delete_all.data:
+            info_requester.delete_all_sources()
+            return redirect(url_for('upload_file'))
+        return redirect(url_for('index'))
+    return render_template('file_admin.html',
+                           title='files...',
+                           form=form,
+                           file_info = file_info)
+
+
+@app.route('/', methods=['GET', 'POST'])
+@app.route('/index', methods=['GET', 'POST'])
+@login_required
+def index():
+    form = HomeForm()
+    info_requester = InfoRequestHandler(current_user.id)
+    file_info = info_requester.get_source_details()
+    if not file_info:
+        return redirect(url_for('upload_file')) # someday need to abstract this
+    return render_template('index.html',
                            file_info=[file_info[0], file_info[1]],
                            title='Home',
-                           today=date.today())
+                           today=date.today(),
+                           columns=info_requester.get_columns_for_spending(),
+                           topline_spending_summary=info_requester.get_summary_of_all_spending())
 
 
 @app.route('/login', methods=['GET', 'POST'])
@@ -90,6 +100,15 @@ def logout():
     logout_user()
     return redirect(url_for('login'))
 
+@app.route('/monthly_detail/<frequency>', methods=["GET"])
+@login_required
+def monthly_detail(frequency):
+    #    form = Form()
+    info_requester = InfoRequestHandler(current_user.id)
+    file_info = info_requester.get_source_details()
+    return render_template('monthly_detail.html', title='Monthly Details', file_info=[file_info[0], file_info[1]],
+                           freq = frequency,
+                           items = info_requester.get_recent_items_for('expense', frequency=frequency))
 
 @app.route('/register', methods=["GET", "POST"])
 def register():
@@ -106,9 +125,20 @@ def register():
     return render_template('register.html', title='Register', form=form, file_info=["none yet", "not yet"])
 
 
-# helpers
-def allowed_file(filename):
-    return '.' in filename and filename.rsplit('.', 1)[1].lower() in Config.ALLOWED_EXTENSIONS
+@app.route('/spending_analysis', methods=['GET', 'POST'])
+@login_required
+def spending_analysis():
+    info_requester = InfoRequestHandler(current_user.id)
+    file_info = info_requester.get_source_details()
+    if not file_info:
+        return redirect(url_for('upload_file')) # someday need to abstract this
+    # spending summary
+    return render_template('spending_analysis.html',
+                           file_info=[file_info[0], file_info[1]],
+                           title='Home',
+                           today=date.today(),
+                           columns=info_requester.get_columns_for_spending(),
+                           spending_summary_info=info_requester.get_summary_spending_info())
 
 
 @app.route('/upload_file', methods=['GET', 'POST'])
@@ -127,26 +157,6 @@ def upload_file():
                            file_info=file_info)
 
 
-@app.route('/file_admin', methods=['GET', 'POST'])
-@login_required
-def file_admin():
-    form = FileAdminForm()
-    info_requester = InfoRequestHandler(current_user.id)
-    file_info = info_requester.get_source_details()
-    if not file_info:
-        return redirect(url_for('upload_file')) # someday need to abstract this
-    form.files.choices = [(f.id, f.filename + "; " + str(f.uploaded_timestamp)) for f in info_requester.get_source_list()]
-    file_info = info_requester.get_source_details()
-    if request.method == 'POST':
-        if form.select.data:
-            info_requester.set_recent_source_details([int(form.files.data)])
-        elif form.delete.data:
-            info_requester.delete_source([int(form.files.data)])
-        elif form.delete_all.data:
-            info_requester.delete_all_sources()
-            return redirect(url_for('upload_file'))
-        return redirect(url_for('index'))
-    return render_template('file_admin.html',
-                           title='files...',
-                           form=form,
-                           file_info = file_info)
+# helpers
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in Config.ALLOWED_EXTENSIONS
