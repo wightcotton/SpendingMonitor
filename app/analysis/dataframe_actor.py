@@ -3,7 +3,7 @@ from io import BytesIO
 from app import db
 import pandas as pd
 import numpy as np
-from datetime import date
+from datetime import date, datetime
 import math
 
 class File_Upload(object):
@@ -209,24 +209,39 @@ class CategoryDFActor():
         # category dataframe is derived from dataframe containing all the transactions
         temp_category_group_obj = full_df.groupby(['Category'])['Amount']
         entries_count_by_category_series = temp_category_group_obj.count()
+        category_number_of_months_series = full_df.groupby(['Category'])['MthYr'].unique().map(lambda m: len(m))
+        category_item_date_first = full_df.groupby(['Category'])['Date'].min()
+        category_item_date_last = full_df.groupby(['Category'])['Date'].max()
+        category_days_since_last_item = category_item_date_last.map(lambda d: (datetime.today().date() - datetime.date(d)).days)
+        category_item_date_dispersion = category_item_date_last - category_item_date_first
         entries_amount_total_category_series = temp_category_group_obj.sum()
         debit_entries_count_series = full_df.loc[full_df['Transaction Type'] == 'debit'].groupby(['Category'])['Amount'].count()
         large_entries_count_series = full_df.loc[full_df['Amount'] > 5000].groupby(['Category'])['Amount'].count()
         self.cat_df = pd.concat([entries_count_by_category_series,
+                                 category_number_of_months_series,
+                                 category_item_date_first,
+                                 category_item_date_last,
+                                 category_item_date_dispersion,
+                                 category_days_since_last_item,
                              entries_amount_total_category_series,
                              large_entries_count_series,
                              debit_entries_count_series],
                             axis=1)
-        self.cat_df.set_axis(['count', 'sum', 'large', 'debit'], axis=1, inplace=True)
+        self.cat_df.set_axis(['count', 'months', 'first date', 'last date', 'dispersion', 'days since last item', 'sum', 'large', 'debit'], axis=1, inplace=True)
         self.number_of_months = len(full_df['MthYr'].unique())
         self.cat_df['ave_mnthly_spend'] = self.cat_df['sum'].map(lambda s: s / self.number_of_months)
         self.cat_df['large_percent'] = self.cat_df['large'] / self.cat_df['count']
         self.cat_df['debit_percent'] = self.cat_df['debit'] / self.cat_df['count']
         # create false mutual exclusity among the three cat types - check for investment first to eliminate those from spending
         self.cat_df['category_type'] = self.cat_df.apply(self.det_cat, axis=1)
-        self.cat_df['frequency'] = self.cat_df['count'].map(lambda f: f / self.number_of_months)
+        self.cat_df['frequency_within_months'] = self.cat_df['count']/self.cat_df['months']
+        self.cat_df['frequency_across_full_timeframe'] = self.cat_df['count'].map(lambda c: c / self.number_of_months)
+        self.cat_df['frequency_index'] = self.cat_df.apply(self.calc_freq_index, axis=1)
         self.cat_df['frequency_category'] = self.cat_df.apply(self.det_freq_cat, axis=1)
         self.temp_type_freq_group = self.cat_df.groupby(['category_type', 'frequency_category'])
+
+    def get_number_of_months_for(self, cat):
+            return
     # category summary info is list of categories with calculated values in category_info_df
 
     def get_category_summary_info(self):
@@ -238,22 +253,45 @@ class CategoryDFActor():
     def get_category_types(self):
         return ['investment', 'expense', 'income']
 
-    def det_freq_cat(self, row):
-        naive_actual_frequency = row['count'] / self.number_of_months
-        # value of 1 equals one cat entry per month
-        # value of 4 equals one per week
-        if row['count'] < 5:
-            return 'rare'
-        elif naive_actual_frequency > 3:
-            return 'weekly'
-        elif naive_actual_frequency > 1.75:
-            return 'biweekly'
-        elif naive_actual_frequency > .9:
-            return 'monthly'
-        elif naive_actual_frequency > .7:
-            return 'quarterly'
+    def calc_freq_index(self, row):
+        # on average, if there are  more than 3 items per month category is a good weekly candidate,
+        #   but can be weak because category has to be active across full time
+        #   if last item ws within the last ~ 10 days, locks it in as weekly
+        #   other weekly categories, have a frequency within > 3 as well but need to have a fresh dispersion
+        # monthly frequency divided by full number of months * or / dispersion factor (degree to which items been spent across full time frame)
+        # user frequency within months if recent and if dispersion is consistent with frequency
+        if 20 <  row['dispersion'].days / row['months'] < 40 and 20 < row['days since last item'] / row['frequency_within_months'] < 40:
+                return row['frequency_within_months']
         else:
+            return  row['frequency_across_full_timeframe']
+
+    def det_freq_cat(self, row):
+        if row['frequency_index'] > 3:
+            return 'weekly'
+        elif row['frequency_index'] > 1.75:
+            return 'biweekly'
+        elif row['frequency_index'] > .9:
+            return 'monthly'
+        elif row['frequency_index'] > .33:
+            return 'quarterly'
+        elif row['frequency_index'] > .1:
             return 'sporadic'
+        else:
+            return 'rare'
+
+    def det_freq_cat_old(self, row):
+        if row['frequency_across_full_timeframe'] > 3 or (row['frequency_within_months'] > 3 and row['days since last item'] < 10):
+            return 'weekly'
+        elif row['frequency_across_full_timeframe'] > 1.75 or (row['frequency_within_months'] > 1.75 and row['days since last item'] < 20):
+            return 'biweekly'
+        elif row['frequency_across_full_timeframe'] > .9 or (row['frequency_within_months'] > .9 and row['days since last item'] < 40):
+            return 'monthly'
+        elif row['frequency_across_full_timeframe'] > .33 or (row['frequency_within_months'] > .33 and row['days since last item'] < 120):
+            return 'quarterly'
+        elif row['frequency_across_full_timeframe'] >.1:
+            return 'sporadic'
+        else:
+            return 'rare'
 
     def get_spending_category_frequencies(self):
         return ['weekly', 'biweekly', 'monthly', 'quarterly', 'sporadic', 'rare']
@@ -268,4 +306,7 @@ class CategoryDFActor():
             return self.cat_df.loc[((self.cat_df['category_type'] == 'expense') & (self.cat_df['frequency_category'] == frequency))].index.tolist()
 
     def get_budget_for(self, category_type, freq):
-        return self.temp_type_freq_group['ave_mnthly_spend'].sum()[category_type, freq]
+        try:
+            return self.temp_type_freq_group['ave_mnthly_spend'].sum()[category_type, freq]
+        except:
+            return 0

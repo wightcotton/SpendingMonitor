@@ -3,13 +3,15 @@
 {% block content %}
     Spending Summary as of {{ today }}<br>
         {% for list in spending_summary_info %}
-            {{ list[0] }}, including  {{ list[1] }} categories ( <a href="{{ url_for('monthly_detail', frequency=list[0]) }}">(details)</a>
+            {{ list[0] }}, including  {{ list[1] }} categories ( <a href="{{ url_for('monthly_detail', frequency=list[0]) }}">details</a>)
             <table border="1">
+            <thead>
                 <tr>
                 {% for c in columns %}
                     <th>{{ c }}</th>
                 {% endfor %}
                 </tr>
+            </thead>
             {% for l in list[2]%}
                 <tr>
                     <td>{{ l[0] }}</td>
