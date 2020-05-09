@@ -56,7 +56,7 @@ class InfoRequestHandler(object):
         self.source_helper.delete_file(list)
 
     def get_category_summary_info(self):
-        return self.actor.get_category_summary_info().sort_values(['category_type', 'frequency'], ascending=False)\
+        return self.actor.get_category_summary_info().sort_values(['category_type', 'frequency_index'], ascending=False)\
             .to_html(float_format=lambda f: '{:,.2f}'.format(f))
 
     def get_columns_for_spending(self):
