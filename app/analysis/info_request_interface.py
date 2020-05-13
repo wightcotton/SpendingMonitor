@@ -20,44 +20,44 @@ class DataSourceFactory(object):
         return self.actor
 
 class InfoRequestHandler(object):
+    """
+    the interface between the underlying data and its implementation
+    as little as possible should happen here in the methods as they represent the methods that
+    they underlying data implementation needs to meet.
+    how the data is delivered through the interface is independent of the underlying data representation
+    lists or html are returned
+    lists when not based directly on a dataframe
+    html when based on a dataframe using to_html with formatting
+    limitation is ability to create links inside of the html dataframe tables...
+    """
     def __init__(self, user_id):
         factory = DataSourceFactory(user_id)
         self.source_helper = factory.get_source_helper()
         self.actor = factory.get_actor()
-        self.display_columns = ["Category", "Date", "Description", "Amount"]  # eventually this will be a user setting
-        current_month = date.today().month
-        self.current_qtr = math.ceil(current_month / 3.)
-        self.last_qtr = self.current_qtr - 1
-        self.qtr_year = date.today().year
-        if self.current_qtr == 1:
-            self.last_qtr = 4
-            self.qtr_year -= 1
-        self.last_month = date.today().month - 1
-        if self.last_month == 0:
-            self.last_month = 12
 
-    # requests against the source file upload
+    # requests against the sourcing of the data
     def get_source_details(self):
-        return self.source_helper.get_file_details()
+        return self.source_helper.get_details()
 
     def add_new_source(self, attribute_list):
-        return self.source_helper.add_new_file(attribute_list)
+        return self.source_helper.add_new_source(attribute_list)
 
     def set_recent_source_details(self, attribute_list):
-        self.source_helper.set_recent_file(attribute_list)
+        self.source_helper.set_recent_source(attribute_list)
 
     def get_source_list(self):
-        return self.source_helper.get_files()
+        return self.source_helper.get_sources()
 
     def delete_all_sources(self):
-        self.source_helper.delete_files()
+        self.source_helper.delete_sources()
 
     def delete_source(self, list):
-        self.source_helper.delete_file(list)
+        self.source_helper.delete_source(list)
+    # end data source
 
-    def get_category_summary_info(self):
-        return self.actor.get_category_summary_info().sort_values(['category_type', 'frequency_index'], ascending=False)\
-            .to_html(float_format=lambda f: '{:,.2f}'.format(f))
+    # requests against content
+    def get_category_info_by(self, sort_by_col_list):
+        return self.actor.get_category_info(sort_by_col_list)
 
     def get_columns_for_spending(self):
         return self.actor.get_columns_for_spending()
@@ -65,81 +65,12 @@ class InfoRequestHandler(object):
     def get_summary_info(self):
         return self.actor.get_summary_info()
 
-    def get_summary_of_all_spending(self):
+    def get_top_line_spending_info(self):
         return self.actor.get_top_line_spending_info()
 
     def get_summary_spending_info(self):
         return self.actor.get_summary_spending_info()
 
-    def get_recent_items_for(self, category, frequency):
-        return self.actor.get_recent_items_for(category, frequency)
+    def get_recent_items_for(self, cat_type=None, frequency=None, category=None):
+        return self.actor.get_recent_items_for(cat_type=cat_type, frequency=frequency, category=category)
 
-class SpendingTransInfo(InfoRequestHandler):
-    def __init__(self, user_id):
-        super().__init__(user_id)
-        self.df_actor = self.factory.get_all_trans_actor()  # this resets a variable that is set in super.__init__
-        self.spending_cat_info_headings = ['Monthly Items', 'Ave Amount', 'Frequency', 'Monthly Budget']
-        self.spending_cat_info = {}
-
-    def get_category_summary_info(self):
-        self.df_actor.get_category_summary_info
-
-    def get_spending_cat_info_headings(self):
-        return self.spending_cat_info_headings
-
-    def get_spending_cat_info(self):
-        if self.spending_cat_info is None:
-            for cat in self.df_actor.get_categories():
-                self.spending_cat_info[cat] = ['{:,.2f}'.format(self.df_actor.get_monthly_frequency(cat)),
-                                               '{:,.2f}'.format(self.df_actor.get_mean_by_cat(cat)),
-                                               self.get_spending_frequency_category(cat),
-                                               '${:,.2f}'.format(self.df_actor.get_monthly_budget(cat))
-                                               ]
-        return self.spending_cat_info
-
-    def get_spending_cat_info_by(self, column_number_of_detail):
-        ret = []
-        for key, value in self.spending_cat_info.items():
-            temp = [key]
-            for v in value:
-                temp.append(v)
-            ret.append(temp)
-        return sorted(ret, key=lambda x: float(x[column_number_of_detail]), reverse=True)
-
-    # end init methods
-
-    # summarize results into list by listing of summary items above...
-
-    def get_number_of_spending_entries(self, cat):
-        return self.spending_df.loc[self.spending_df['Category'] == cat]['Category'].count()
-
-    def get_number_of_spending_items(self, cat):
-        return self.spending_df.loc[self.spending_df['Category'] == cat]['Amount'].count()
-
-    def get_category_spending_for_month(self, cat, m, y):
-        ret = []
-        ret.append(self.spending_df.loc[(self.spending_df["Category"] == cat) &
-                                        (self.spending_df["Month"] == m) &
-                                        (self.spending_df["Year"] == y),
-                                        self.display_columns])
-        ret.append(ret[0]["Amount"].sum())
-        return ret
-
-    def get_cat_spending_by_qtr_and_year(self):
-        ret = []
-        return (self.trans_df.groupby(["Category", "Year", "Qtr"])["Amount"].sum())
-
-    def get_cat_spending_by_month_qtr_and_year(self):
-        ret = []
-        return (self.trans_df.groupby(["Category", "Year", "Month"])["Amount"].sum())
-
-    def foobar(self):
-        return (self.get_cat_spending_by_month_and_year() + self.get_cat_spending_by_year())
-        # return self.trans_df.loc[self.trans_df[(self.trans_df["Category"] == cat) & (self.trans_df["Month"] == m), :]]
-
-        # self.trans_df.Category.unique().to_frame()
-        # selecting columns - df.loc[:, [list of column names]
-        # minimum - df.loc[:, [list of column names].min() or max(), count(), avg(), sum()
-        # selection rows - df.loc[df.[column_name] >= 1000000
-        # group by - df.groupby([column names]).sum()
-        # self.trans_df.column.unique() returns distinct values in column
