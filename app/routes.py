@@ -23,7 +23,18 @@ def category_analysis():
                            file_info=[file_info[0], file_info[1]],
                            title='Category Analysis',
                            today=date.today(),
-                           category_summary_info=info_requester.get_category_summary_info())
+                           category_info=info_requester.get_category_info_by(['category_type', 'frequency_index']))
+
+
+@app.route('/category_detail/<category>', methods=["GET"])
+@login_required
+def category_detail(category):
+    #    form = Form()
+    info_requester = InfoRequestHandler(current_user.id)
+    file_info = info_requester.get_source_details()
+    return render_template('category_detail.html', title='Category Details', file_info=[file_info[0], file_info[1]],
+                           cat = category,
+                           items = info_requester.get_recent_items_for(category=category))
 
 
 @app.route('/file_admin', methods=['GET', 'POST'])
@@ -65,7 +76,7 @@ def index():
                            title='Home',
                            today=date.today(),
                            columns=info_requester.get_columns_for_spending(),
-                           topline_spending_summary=info_requester.get_summary_of_all_spending())
+                           topline_spending_summary=info_requester.get_top_line_spending_info())
 
 
 @app.route('/login', methods=['GET', 'POST'])
@@ -109,6 +120,7 @@ def monthly_detail(frequency):
     return render_template('monthly_detail.html', title='Monthly Details', file_info=[file_info[0], file_info[1]],
                            freq = frequency,
                            items = info_requester.get_recent_items_for('expense', frequency=frequency))
+
 
 @app.route('/register', methods=["GET", "POST"])
 def register():
