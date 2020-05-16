@@ -1,14 +1,14 @@
 from datetime import date
 import math
 
-from app.analysis.dataframe_actor import File_Upload
+from app.analysis.dataframe_actor import FileUpload
 from app.analysis.dataframe_actor import DataFrameActor
 import pandas as pd
 
 class DataSourceFactory(object):
     def __init__(self, user_id):
         # in the future, if there are other source types for the info, the selection occurs here
-        self.source_helper = File_Upload(user_id)
+        self.source_helper = FileUpload(user_id)
         self.actor = self.source_helper.get_actor()
 
     def get_source_helper(self):
@@ -62,6 +62,9 @@ class InfoRequestHandler(object):
     def get_columns_for_spending(self):
         return self.actor.get_columns_for_spending()
 
+    def get_items_for(self, category=None):
+        return self.actor.get_items_for(category)
+
     def get_summary_info(self):
         return self.actor.get_summary_info()
 
@@ -70,6 +73,12 @@ class InfoRequestHandler(object):
 
     def get_summary_spending_info(self):
         return self.actor.get_summary_spending_info()
+
+    def get_cat_summary_spending_info(self, list_of_categories):
+        return self.actor.get_cat_summary_spending_info(list_of_categories)
+
+    def get_category_details_for(self, frequency=None):
+        return self.actor.get_category_details_for(frequency=frequency)
 
     def get_recent_items_for(self, cat_type=None, frequency=None, category=None):
         return self.actor.get_recent_items_for(cat_type=cat_type, frequency=frequency, category=category)
