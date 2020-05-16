@@ -2,9 +2,12 @@
 
 {% block content %}
     Spending Summary as of {{ today }}<br>
-    {% for list in spending_summary_info %}
-        <details>
-        <summary display: list-item>{{ list[0] }} including <a href="{{ url_for('frequency_categories', frequency=list[0]) }}">{{ list[1] }} categories</a></summary>
+        {% for list in spending_summary_info %}
+            {{ list[0] }} (<a href="{{ url_for('recent_category_items', category=list[0]) }}">recent items</a>)
+            (<a href="{{ url_for('items', category=list[0]) }}">all items</a>)
+            <details >
+            <summary></summary>
+            </details>
             <table border="1">
             <thead>
                 <tr>
@@ -22,10 +25,7 @@
                 </tr>
             {% endfor %}
             </table>
-
-        (<a href="{{ url_for('recent_frequency_items', frequency=list[0]) }}">recent items</a>)
-        </details>
         {% endfor %}
-
+    <details>
 
 {% endblock %}

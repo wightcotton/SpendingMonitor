@@ -11,30 +11,18 @@ from werkzeug.utils import secure_filename
 from datetime import date
 
 
-@app.route('/category_analysis', methods=['GET', 'POST'])
+@app.route('/categories', methods=['GET', 'POST'])
 @login_required
-def category_analysis():
-    form = FileAdminForm()
+def categories():
     info_requester = InfoRequestHandler(current_user.id)
     file_info = info_requester.get_source_details()
     if not file_info:
-        return redirect(url_for('upload_file')) # someday need to abstract this
-    return render_template('category_details.html',
+        return redirect(url_for('upload_file'))  # someday need to abstract this
+    return render_template('categories.html',
                            file_info=[file_info[0], file_info[1]],
-                           title='Category Analysis',
+                           title='Categories',
                            today=date.today(),
                            category_info=info_requester.get_category_info_by(['category_type', 'frequency_index']))
-
-
-@app.route('/category_detail/<category>', methods=["GET"])
-@login_required
-def category_detail(category):
-    #    form = Form()
-    info_requester = InfoRequestHandler(current_user.id)
-    file_info = info_requester.get_source_details()
-    return render_template('category_detail.html', title='Category Details', file_info=[file_info[0], file_info[1]],
-                           cat = category,
-                           items = info_requester.get_recent_items_for(category=category))
 
 
 @app.route('/file_admin', methods=['GET', 'POST'])
@@ -44,8 +32,9 @@ def file_admin():
     info_requester = InfoRequestHandler(current_user.id)
     file_info = info_requester.get_source_details()
     if not file_info:
-        return redirect(url_for('upload_file')) # someday need to abstract this
-    form.files.choices = [(f.id, f.filename + "; " + str(f.uploaded_timestamp)) for f in info_requester.get_source_list()]
+        return redirect(url_for('upload_file'))  # someday need to abstract this
+    form.files.choices = [(f.id, f.filename + "; " + str(f.uploaded_timestamp)) for f in
+                          info_requester.get_source_list()]
     file_info = info_requester.get_source_details()
     if request.method == 'POST':
         if form.select.data:
@@ -59,7 +48,18 @@ def file_admin():
     return render_template('file_admin.html',
                            title='files...',
                            form=form,
-                           file_info = file_info)
+                           file_info=file_info)
+
+
+@app.route('/frequency_categories/<frequency>', methods=["GET"])
+@login_required
+def frequency_categories(frequency):
+    #    form = Form()
+    info_requester = InfoRequestHandler(current_user.id)
+    file_info = info_requester.get_source_details()
+    return render_template('frequency_categories.html', title='summary of categories for ' + frequency,
+                           file_info=[file_info[0], file_info[1]],
+                           spending_summary_info=info_requester.get_category_details_for(frequency=frequency))
 
 
 @app.route('/', methods=['GET', 'POST'])
@@ -70,13 +70,24 @@ def index():
     info_requester = InfoRequestHandler(current_user.id)
     file_info = info_requester.get_source_details()
     if not file_info:
-        return redirect(url_for('upload_file')) # someday need to abstract this
+        return redirect(url_for('upload_file'))  # someday need to abstract this
     return render_template('index.html',
                            file_info=[file_info[0], file_info[1]],
                            title='Home',
                            today=date.today(),
                            columns=info_requester.get_columns_for_spending(),
                            topline_spending_summary=info_requester.get_top_line_spending_info())
+
+
+@app.route('/items/<category>', methods=["GET"])
+@login_required
+def items(category):
+    #    form = Form()
+    info_requester = InfoRequestHandler(current_user.id)
+    file_info = info_requester.get_source_details()
+    return render_template('items.html', title='All Items', file_info=[file_info[0], file_info[1]],
+                           subtitle=category,
+                           items=info_requester.get_items_for(category=category))
 
 
 @app.route('/login', methods=['GET', 'POST'])
@@ -111,15 +122,27 @@ def logout():
     logout_user()
     return redirect(url_for('login'))
 
-@app.route('/monthly_detail/<frequency>', methods=["GET"])
+
+@app.route('/recent_frequency_items/<frequency>', methods=["GET"])
 @login_required
-def monthly_detail(frequency):
+def recent_frequency_items(frequency):
     #    form = Form()
     info_requester = InfoRequestHandler(current_user.id)
     file_info = info_requester.get_source_details()
-    return render_template('monthly_detail.html', title='Monthly Details', file_info=[file_info[0], file_info[1]],
-                           freq = frequency,
-                           items = info_requester.get_recent_items_for('expense', frequency=frequency))
+    return render_template('recent_items.html', title='Recent Items', file_info=[file_info[0], file_info[1]],
+                           subtitle=frequency,
+                           items=info_requester.get_recent_items_for('expense', frequency=frequency))
+
+
+@app.route('/recent_category_items/<category>', methods=["GET"])
+@login_required
+def recent_category_items(category):
+    #    form = Form()
+    info_requester = InfoRequestHandler(current_user.id)
+    file_info = info_requester.get_source_details()
+    return render_template('recent_items.html', title='Recent Items', file_info=[file_info[0], file_info[1]],
+                           subtitle=category,
+                           items=info_requester.get_recent_items_for(category=category))
 
 
 @app.route('/register', methods=["GET", "POST"])
@@ -143,7 +166,7 @@ def spending_analysis():
     info_requester = InfoRequestHandler(current_user.id)
     file_info = info_requester.get_source_details()
     if not file_info:
-        return redirect(url_for('upload_file')) # someday need to abstract this
+        return redirect(url_for('upload_file'))  # someday need to abstract this
     # spending summary
     return render_template('spending_analysis.html',
                            file_info=[file_info[0], file_info[1]],
