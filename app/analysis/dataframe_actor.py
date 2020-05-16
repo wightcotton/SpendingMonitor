@@ -5,7 +5,7 @@ import pandas as pd
 import numpy as np
 from datetime import date, datetime
 import math
-from sklearn.cluster import KMeans
+#from sklearn.cluster import KMeans
 
 
 class FileUpload(object):
@@ -321,8 +321,9 @@ class CategoryDFActor:
             return 0
 
     def do_clustering(self):
-        km = KMeans(n_clusters=5, init='random', n_init=10, max_iter=300, tol=1e-04, random_state=0)
-        return km.fit_predict(self.cat_df[['frequency_index']])
+        pass
+        # km = KMeans(n_clusters=5, init='random', n_init=10, max_iter=300, tol=1e-04, random_state=0)
+        # return km.fit_predict(self.cat_df[['frequency_index']])
 
     # category dataframe graveyard of stats...
 
