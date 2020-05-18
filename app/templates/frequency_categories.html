@@ -1,13 +1,11 @@
 {% extends "base.html" %}
 
 {% block content %}
-    Spending Summary as of {{ today }}<br>
+    <h3>Spending Summary for {{ frequency }} categories</h3>
         {% for list in spending_summary_info %}
-            {{ list[0] }} (<a href="{{ url_for('recent_category_items', category=list[0]) }}">recent items</a>)
-            (<a href="{{ url_for('items', category=list[0]) }}">all items</a>)
             <details >
-            <summary></summary>
-            </details>
+            <summary>{{ list[0] }} (<a href="{{ url_for('category_summary', category=list[0]) }}">summary</a>)
+            </summary>
             <table border="1">
             <thead>
                 <tr>
@@ -25,7 +23,6 @@
                 </tr>
             {% endfor %}
             </table>
+            </details>
         {% endfor %}
-    <details>
-
 {% endblock %}

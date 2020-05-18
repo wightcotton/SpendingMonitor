@@ -108,6 +108,9 @@ class DataFrameActor(object):
     def get_summary_info(self):
         return [['All Transaction', self.df.index.tolist(), self.get_summary_info_for(self.df)]]
 
+    def get_current_status(self, frequency=None, category=None):
+        pass
+
     def get_top_line_spending_info(self):
         temp_df = self.get_subset_df(cat_type='expense')
         number_of_months = len(temp_df['MthYr'].unique())
@@ -131,6 +134,9 @@ class DataFrameActor(object):
 
     def get_category_details_for(self, frequency=None):
         return self.get_cat_summary_spending_info(self.cat_df_actor.get_categories('expense', frequency))
+
+    def get_category_detail(self, category=None):
+        return self.get_cat_summary_spending_info([category])
 
     def get_cat_summary_spending_info(self, list_of_categories):
         # return a list of lists: [['Total' ['last year', spending, budget, percent spent],

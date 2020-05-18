@@ -25,6 +25,23 @@ def categories():
                            category_info=info_requester.get_category_info_by(['category_type', 'frequency_index']))
 
 
+@app.route('/category_summary/<category>', methods=['GET', 'POST'])
+@login_required
+def category_summary(category):
+    info_requester = InfoRequestHandler(current_user.id)
+    file_info = info_requester.get_source_details()
+    if not file_info:
+        return redirect(url_for('upload_file'))  # someday need to abstract this
+    # spending summary
+    return render_template('category_summary.html',
+                           file_info=[file_info[0], file_info[1]],
+                           title=category + ' summary',
+                           today=date.today(),
+                           columns=info_requester.get_columns_for_spending(),
+                           spending_summary_info=info_requester.get_category_detail(category=category),
+                           items=info_requester.get_items_for(category=category))
+
+
 @app.route('/file_admin', methods=['GET', 'POST'])
 @login_required
 def file_admin():
@@ -59,6 +76,7 @@ def frequency_categories(frequency):
     file_info = info_requester.get_source_details()
     return render_template('frequency_categories.html', title='summary of categories for ' + frequency,
                            file_info=[file_info[0], file_info[1]],
+                           frequency=frequency,
                            spending_summary_info=info_requester.get_category_details_for(frequency=frequency))
 
 
@@ -123,17 +141,6 @@ def logout():
     return redirect(url_for('login'))
 
 
-@app.route('/recent_frequency_items/<frequency>', methods=["GET"])
-@login_required
-def recent_frequency_items(frequency):
-    #    form = Form()
-    info_requester = InfoRequestHandler(current_user.id)
-    file_info = info_requester.get_source_details()
-    return render_template('recent_items.html', title='Recent Items', file_info=[file_info[0], file_info[1]],
-                           subtitle=frequency,
-                           items=info_requester.get_recent_items_for('expense', frequency=frequency))
-
-
 @app.route('/recent_category_items/<category>', methods=["GET"])
 @login_required
 def recent_category_items(category):
@@ -143,6 +150,17 @@ def recent_category_items(category):
     return render_template('recent_items.html', title='Recent Items', file_info=[file_info[0], file_info[1]],
                            subtitle=category,
                            items=info_requester.get_recent_items_for(category=category))
+
+
+@app.route('/recent_frequency_items/<frequency>', methods=["GET"])
+@login_required
+def recent_frequency_items(frequency):
+    #    form = Form()
+    info_requester = InfoRequestHandler(current_user.id)
+    file_info = info_requester.get_source_details()
+    return render_template('recent_items.html', title='Recent Items', file_info=[file_info[0], file_info[1]],
+                           subtitle=frequency,
+                           items=info_requester.get_recent_items_for('expense', frequency=frequency))
 
 
 @app.route('/register', methods=["GET", "POST"])
