@@ -2,5 +2,5 @@
 
 {% block content %}
     <h3>{{ subtitle }} items from last and this month</h3>
-        {{ items | safe }}
+        {% include 'snippets/items_from_dataframe.html' %}
 {% endblock %}

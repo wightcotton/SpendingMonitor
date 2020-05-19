@@ -71,6 +71,9 @@ class InfoRequestHandler(object):
     def get_top_line_spending_info(self):
         return self.actor.get_top_line_spending_info()
 
+    def get_monthly_budget(self):
+        return self.actor.get_monthly_budget()
+
     def get_summary_spending_info(self):
         return self.actor.get_summary_spending_info()
 

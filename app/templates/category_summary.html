@@ -5,26 +5,8 @@
     {% for list in spending_summary_info %}
         <h3>{{ list[0] }}</h3>
         <h3>Summary</h3>
-            <table border="1">
-            <thead>
-                <tr>
-                {% for c in columns %}
-                    <th>{{ c }}</th>
-                {% endfor %}
-                </tr>
-            </thead>
-            {% for l in list[2]%}
-                <tr>
-                    <td>{{ l[0] }}</td>
-                    <td>{{ l[1] }}</td>
-                    <td>{{ l[2] }}</td>
-                    <td>{{ l[3] }}</td>
-                </tr>
-            {% endfor %}
-            </table>
-        <h3>All Items</a></h3>
-        {{ items | safe }}
+        {% include 'snippets/summary_table.html' %}
     {% endfor %}
-
-
+    <h3>All Items</a></h3>
+    {{ items | safe }}
 {% endblock %}

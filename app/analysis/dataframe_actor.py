@@ -5,7 +5,9 @@ import pandas as pd
 import numpy as np
 from datetime import date, datetime
 import math
-#from sklearn.cluster import KMeans
+
+
+# from sklearn.cluster import KMeans
 
 
 class FileUpload(object):
@@ -113,10 +115,14 @@ class DataFrameActor(object):
 
     def get_top_line_spending_info(self):
         temp_df = self.get_subset_df(cat_type='expense')
-        number_of_months = len(temp_df['MthYr'].unique())
-        monthly_budget = temp_df['Amount'].sum() / number_of_months
         return [['All Spending', len(temp_df['Category'].unique().tolist()),
-                 self.get_summary_info_for(temp_df, monthly_budget)]]
+                 self.get_summary_info_for(temp_df, self.get_monthly_budget())]]
+
+    def get_monthly_budget(self, df=None):
+        if df is None:
+            df = self.get_subset_df(cat_type='expense')
+        number_of_months = len(df['MthYr'].unique())
+        return df['Amount'].sum() / number_of_months
 
     def get_summary_spending_info(self):
         # return a list of lists: [['Total' ['last year', spending, budget, percent spent],
@@ -170,7 +176,9 @@ class DataFrameActor(object):
 
     def get_items_for(self, category=None):
         # gets all items for a category grouped by year and month
-        return self.get_subset_df(category=category)[self.get_detail_item_display_columns()].sort_values(['Date'], ascending=False).to_html( float_format='{:,.2f}'.format)
+        return self.get_subset_df(category=category)[self.get_detail_item_display_columns()].sort_values(['Date'],
+                                                                                                         ascending=False).to_html(
+            float_format='{:,.2f}'.format)
 
     def get_detail_item_display_columns(self):
         return ["Date", "Category", "Amount", "Description"]  # eventually this will be a user setting
@@ -246,7 +254,7 @@ class CategoryDFActor:
         cat_item_count = temp_category_group_obj.count()
         cat_first_item_date = full_df.groupby(['Category'])['Date'].min()
         cat_last_item_date = full_df.groupby(['Category'])['Date'].max()
-        cat_item_timespan = (cat_last_item_date - cat_first_item_date).dt.days + 1 # for where only one expense
+        cat_item_timespan = (cat_last_item_date - cat_first_item_date).dt.days + 1  # for where only one expense
         cat_frequency = cat_item_timespan / cat_item_count  # items per day
         cat_total_spend = temp_category_group_obj.sum()
         cat_debit_item_count = full_df.loc[full_df['Transaction Type'] == 'debit'].groupby(['Category'])[
@@ -261,8 +269,9 @@ class CategoryDFActor:
                                  cat_large_item_count,
                                  cat_debit_item_count],
                                 axis=1)
-        self.cat_df.set_axis(['count', 'first date', 'last date', 'timespan', 'cat freq', 'total spend', 'large', 'debit'],
-                             axis=1, inplace=True)
+        self.cat_df.set_axis(
+            ['count', 'first date', 'last date', 'timespan', 'cat freq', 'total spend', 'large', 'debit'],
+            axis=1, inplace=True)
         self.number_of_months = len(full_df['MthYr'].unique())
         self.cat_df['ave_mnthly_spend'] = self.cat_df['total spend'].map(lambda s: s / self.number_of_months)
         self.cat_df['large_percent'] = self.cat_df['large'] / self.cat_df['count']
@@ -296,7 +305,7 @@ class CategoryDFActor:
             return 'rare'
         elif row['frequency_index'] < 8:
             return 'weekly'
-        elif row['frequency_index']  < 16:
+        elif row['frequency_index'] < 16:
             return 'biweekly'
         elif row['frequency_index'] < 35:
             return 'monthly'
@@ -316,7 +325,7 @@ class CategoryDFActor:
         else:
             # need to include check to see if frequency in spending categories list
             return self.cat_df.loc[((self.cat_df['category_type'] == 'expense') & (
-                        self.cat_df['frequency_category'] == frequency))].index.tolist()
+                    self.cat_df['frequency_category'] == frequency))].index.tolist()
 
     def get_budget_for(self, category_type=None, frequency=None, category=None):
         if category:

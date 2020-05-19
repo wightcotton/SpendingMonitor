@@ -1,5 +1,5 @@
 {% extends "base.html" %}
 
 {% block content %}
-    {{ category_info | safe }}
+    {% include 'snippets/items_from_dataframe.html' %}
 {% endblock %}

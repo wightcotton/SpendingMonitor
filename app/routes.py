@@ -22,7 +22,7 @@ def categories():
                            file_info=[file_info[0], file_info[1]],
                            title='Categories',
                            today=date.today(),
-                           category_info=info_requester.get_category_info_by(['category_type', 'frequency_index']))
+                           items=info_requester.get_category_info_by(['category_type', 'frequency_index']))
 
 
 @app.route('/category_summary/<category>', methods=['GET', 'POST'])
@@ -190,6 +190,7 @@ def spending_analysis():
                            file_info=[file_info[0], file_info[1]],
                            title='Home',
                            today=date.today(),
+                           annual_budget=info_requester.get_monthly_budget()*12,
                            columns=info_requester.get_columns_for_spending(),
                            spending_summary_info=info_requester.get_summary_spending_info())
 

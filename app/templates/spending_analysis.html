@@ -1,30 +1,12 @@
 {% extends "base.html" %}
 
 {% block content %}
-    Spending Summary as of {{ today }}<br>
+    <h3>Spending Summary as of {{ today }}</h3>
+    <h4>annual budget: {{ '${:,.2f}'.format(annual_budget) }} (based on spending)</h4>
     {% for list in spending_summary_info %}
-       {{ list[0] }}  (<a href="{{ url_for('recent_frequency_items', frequency=list[0]) }}">recent items</a>) <a href="{{ url_for('frequency_categories', frequency=list[0]) }}">{{ list[1] }} categories</a>
-        <table border="1">
-            <thead>
-                <tr>
-                {% for c in columns %}
-                    <th>{{ c }}</th>
-                {% endfor %}
-                </tr>
-            </thead>
-            {% for l in list[2]%}
-                <tr>
-                    <td>{{ l[0] }}</td>
-                    <td>{{ l[1] }}</td>
-                    <td>{{ l[2] }}</td>
-                    <td>{{ l[3] }}</td>
-                </tr>
-            {% endfor %}
-            </table>
-
-
-        </details>
-        {% endfor %}
+        {{ list[0] }}  (<a href="{{ url_for('recent_frequency_items', frequency=list[0]) }}">recent items</a>) <a href="{{ url_for('frequency_categories', frequency=list[0]) }}">{{ list[1] }} categories</a>
+        {% include 'snippets/summary_table.html' %}
+    {% endfor %}
 
 
 {% endblock %}
