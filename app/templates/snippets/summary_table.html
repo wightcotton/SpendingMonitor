@@ -1,0 +1,19 @@
+<!-- assuming this is included inside a for loop with list as individual item
+     and that a list of columns has been provided -->
+<table border="1">
+    <thead>
+        <tr>
+        {% for c in columns %}
+            <th>{{ c }}</th>
+        {% endfor %}
+        </tr>
+    </thead>
+    {% for l in list[2]%}
+        <tr>
+            <td>{{ l[0] }}</td>
+            <td>{{ l[1] }}</td>
+            <td>{{ l[2] }}</td>
+            <td>{{ l[3] }}</td>
+        </tr>
+    {% endfor %}
+</table>
