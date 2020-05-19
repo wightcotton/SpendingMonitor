@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <h3>Spending Summary for {{ frequency }} categories</h3>
+        {% for list in spending_summary_info %}
+            <details >
+            <summary>{{ list[0] }} (<a href="{{ url_for('category_summary', category=list[0]) }}">summary</a>)
+            </summary>
+            {% include 'snippets/summary_table.html' %}
+            </details>
+        {% endfor %}
+{% endblock %}
