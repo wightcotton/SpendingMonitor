@@ -89,3 +89,9 @@ class InfoRequestHandler(object):
     def get_recent_items_for(self, cat_type=None, frequency=None, category=None):
         return self.actor.get_recent_items_for(cat_type=cat_type, frequency=frequency, category=category)
 
+    def get_frequency(self, category=None):
+        return self.actor.get_frequency(category=category)
+
+    def get_category_metadata(self, frequency=None, category=None):
+        return self.actor.get_category_metadata(frequency=frequency, category=category)
+

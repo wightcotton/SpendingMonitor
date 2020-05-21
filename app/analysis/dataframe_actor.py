@@ -82,6 +82,7 @@ class DataFrameActor(object):
         # orient amounts toward spending - what is spend is a positive number
         self.df["normalizer"] = [1 if x == 'debit' else -1 for x in self.df["Transaction Type"]]
         self.df['Amount'] = self.df['Amount'] * self.df['normalizer']
+        self.df['Time_between_items'] = self.df.groupby('Category')['Date'].diff() / np.timedelta64(1, 'D')
         self.cat_df_actor = CategoryDFActor(self.df)
 
     def get_subset_df(self, category=None, cat_type=None, frequency=None):
@@ -101,6 +102,12 @@ class DataFrameActor(object):
         # return html based on cat_df dataframe
         return self.cat_df_actor.get_category_info().sort_values(sort_by_col_list, ascending=True).to_html(
             float_format='{:,.2f}'.format)
+
+    def get_category_metadata(self, frequency=None, category=None):
+        if frequency:
+            return self.cat_df_actor.get_category_metadata(frequency=frequency).to_html(float_format='{:,.2f}'.format)
+        elif category:
+            return self.cat_df_actor.get_category_metadata(category=category).to_html(float_format='{:,.2f}'.format)
 
     def get_columns_for_spending(self):
         return ['Period', 'Count', 'Amount', 'of ave spend']
@@ -173,6 +180,9 @@ class DataFrameActor(object):
         return temp_df.loc[((temp_df["Year"] == this_year) & (temp_df["Month_as_dec"] == this_month)) |
                            ((temp_df["Year"] == prev_year) & (temp_df[
                                                                   "Month_as_dec"] == prev_month)), self.get_detail_item_display_columns()].to_html()
+
+    def get_frequency(self, category=None):
+        return self.cat_df_actor.get_frequency(category=category)
 
     def get_items_for(self, category=None):
         # gets all items for a category grouped by year and month
@@ -255,6 +265,7 @@ class CategoryDFActor:
         cat_first_item_date = full_df.groupby(['Category'])['Date'].min()
         cat_last_item_date = full_df.groupby(['Category'])['Date'].max()
         cat_item_timespan = (cat_last_item_date - cat_first_item_date).dt.days + 1  # for where only one expense
+        cat_item_ave_diff = full_df.groupby(['Category'])['Time_between_items'].mean()
         cat_frequency = cat_item_timespan / cat_item_count  # items per day
         cat_total_spend = temp_category_group_obj.sum()
         cat_debit_item_count = full_df.loc[full_df['Transaction Type'] == 'debit'].groupby(['Category'])[
@@ -264,13 +275,14 @@ class CategoryDFActor:
                                  cat_first_item_date,
                                  cat_last_item_date,
                                  cat_item_timespan,
+                                 cat_item_ave_diff,
                                  cat_frequency,
                                  cat_total_spend,
                                  cat_large_item_count,
                                  cat_debit_item_count],
                                 axis=1)
         self.cat_df.set_axis(
-            ['count', 'first date', 'last date', 'timespan', 'cat freq', 'total spend', 'large', 'debit'],
+            ['count', 'first date', 'last date', 'timespan', 'ave diff', 'cat freq', 'total spend', 'large', 'debit'],
             axis=1, inplace=True)
         self.number_of_months = len(full_df['MthYr'].unique())
         self.cat_df['ave_mnthly_spend'] = self.cat_df['total spend'].map(lambda s: s / self.number_of_months)
@@ -288,14 +300,18 @@ class CategoryDFActor:
     def get_category_info(self):
         return self.cat_df
 
+    def get_frequency(self, category=None):
+        return self.cat_df.loc[category]['frequency_category']
+
     def get_category_summary_info_columns(self):
         return self.cat_df.columns
 
     def det_cat(self, row):
-        return 'investment' if row['large_percent'] > .4 else 'expense' if row['debit_percent'] > .6 else 'income'
+        # return 'investment' if row['large_percent'] > .4 else 'expense' if row['debit_percent'] > .6 else 'income'
+        return 'expense' if row['debit_percent'] > .51 else 'income'
 
     def get_category_types(self):
-        return ['investment', 'expense', 'income']
+        return ['expense', 'income']
 
     def calc_freq_index(self, row):
         return row['cat freq']
@@ -334,6 +350,17 @@ class CategoryDFActor:
             return self.temp_type_freq_group['ave_mnthly_spend'].sum()[category_type, frequency]
         else:
             return 0
+
+    def get_category_metadata_cols(self):
+        return ['last date', 'timespan', 'ave diff', 'large_percent', 'frequency_index']
+
+    def get_category_metadata(self, frequency=None, category=None):
+        if frequency:
+            categories = self.get_categories('expense', frequency)
+        elif category:
+            categories = [category]
+        return self.cat_df.loc[categories, self.get_category_metadata_cols()]
+
 
     def do_clustering(self):
         pass

@@ -1,7 +1,7 @@
 from flask import render_template, flash, redirect, url_for, request, session
 from app import app, db
 from config import Config
-from app.forms import UploadForm, HomeForm, FileAdminForm
+from app.forms import UploadForm, HomeForm, FileAdminForm, CategorySummaryForm
 from flask_login import current_user, login_user, logout_user, login_required
 from app.models import User, UploadedFile
 from app.analysis.info_request_interface import InfoRequestHandler
@@ -28,17 +28,32 @@ def categories():
 @app.route('/category_summary/<category>', methods=['GET', 'POST'])
 @login_required
 def category_summary(category):
+    form = CategorySummaryForm()
     info_requester = InfoRequestHandler(current_user.id)
     file_info = info_requester.get_source_details()
+    if category in session["categories_to_be_examined"]:
+        look_into = True
+    else:
+        look_into = False
     if not file_info:
         return redirect(url_for('upload_file'))  # someday need to abstract this
-    # spending summary
+    if category in session['categories_to_be_examined']:
+        form.is_good_button()
+    if request.method == 'POST':
+        if form.look_into_button.data:
+            session['categories_to_be_examined'].append(category)
+        elif form.is_good_button:
+            session['categories_to_be_examined'].remove(category)
     return render_template('category_summary.html',
+                           form=form,
                            file_info=[file_info[0], file_info[1]],
                            title=category + ' summary',
                            today=date.today(),
+                           look_into= look_into,
+                           frequency=info_requester.get_frequency(category),
                            columns=info_requester.get_columns_for_spending(),
                            spending_summary_info=info_requester.get_category_detail(category=category),
+                           metadata_items=info_requester.get_category_metadata(category=category),
                            items=info_requester.get_items_for(category=category))
 
 
@@ -77,13 +92,16 @@ def frequency_categories(frequency):
     return render_template('frequency_categories.html', title='summary of categories for ' + frequency,
                            file_info=[file_info[0], file_info[1]],
                            frequency=frequency,
-                           spending_summary_info=info_requester.get_category_details_for(frequency=frequency))
+                           spending_summary_info=info_requester.get_category_details_for(frequency=frequency),
+                           items=info_requester.get_category_metadata(frequency=frequency))
 
 
 @app.route('/', methods=['GET', 'POST'])
 @app.route('/index', methods=['GET', 'POST'])
 @login_required
 def index():
+    if 'categories_to_be_examined' not in session:
+        session['categories_to_be_examined'] = []
     form = HomeForm()
     info_requester = InfoRequestHandler(current_user.id)
     file_info = info_requester.get_source_details()

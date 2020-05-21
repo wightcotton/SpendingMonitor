@@ -2,6 +2,7 @@
 
 {% block content %}
     <h3>Spending Summary for {{ frequency }} categories</h3>
+        {% include 'snippets/items_from_dataframe.html' %}
         {% for list in spending_summary_info %}
             <details >
             <summary>{{ list[0] }} (<a href="{{ url_for('category_summary', category=list[0]) }}">summary</a>)
