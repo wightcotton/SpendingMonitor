@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <br>
+    <h3>states with categories currently within</h3>
+    {% for i in categories_by_state %}
+        {{ i[0] }}:
+        {% for l in i[1] %}
+            <a href="{{ url_for('category', cat=l) }}">{{ l }}</a>
+        {% endfor %}
+        <br>
+    {% endfor %}
+    <br>
+    <form action="" method="post" novalidate>
+        {{ form.hidden_tag() }}
+        {{ form.states.label }} <br>
+        {{ form.states(size=6) }}<br>
+        {{ form.new_state }}{{ form.add_new() }}<br>
+        {{ form.delete() }}<br>
+    </form>
+
+{% endblock %}
