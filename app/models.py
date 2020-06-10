@@ -24,6 +24,22 @@ class User(UserMixin, db.Model):
 def load_user(id):
     return User.query.get(int(id))
 
+class StateLookup(db.Model):
+    __tablename__ = 'state_lookup'
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
+    state = db.Column(db.String(64), index=True, unique=True)
+    description = db.Column(db.Text)
+
+class CategoryState(db.Model):
+    __tablename__ = 'category_state'
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
+    category = db.Column(db.String(64), index=True)
+    state = db.Column(db.Integer, db.ForeignKey('state_lookup.id'))
+    comment = db.Column(db.Text)
+    timestamp = db.Column(db.TIMESTAMP, index=True, default=datetime.datetime.now())
+
 class UploadedFile(db.Model):
     __tablename__ = 'uploaded_file'
     id = db.Column(db.Integer, primary_key=True)

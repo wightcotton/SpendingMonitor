@@ -6,8 +6,8 @@
         <h3>{{ list[0] }} ({{ frequency }}) </h3>
         <form action="" method="post">
             {{ form.hidden_tag() }}
-            {{ form.look_into_button }}
-            {{ form.is_good_button }}
+            {{ form.state_radio_button }}<br>
+            {{ form.change_state }}
         </form>
         <h3>Summary</h3>
         {% include 'snippets/summary_table.html' %}
@@ -15,5 +15,10 @@
     <h3>metadata</h3>
     {{ metadata_items | safe }}
     <h3>All Items</h3>
-    {{ items | safe }}
+    {{ items | safe }}<br>
+    <h3>Past States</h3>
+    <form action="" method="post">
+            {{ form.hidden_tag() }}
+            {{ form.prev_states(size=6) }}<br>
+        </form>
 {% endblock %}

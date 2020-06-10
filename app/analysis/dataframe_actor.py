@@ -1,73 +1,12 @@
-from app.models import UploadedFile, User
-from io import BytesIO
-from app import db
+
 import pandas as pd
 import numpy as np
 from datetime import date, datetime
 import math
+from app.database_access.category_state_access import CategoryStateAccess
 
 
 # from sklearn.cluster import KMeans
-
-
-class FileUpload(object):
-    def __init__(self, user_id):
-        self.user_id = user_id
-        user = User.query.filter_by(id=user_id).first()
-        file = None
-        if user.recent_file_id is not None:
-            file = UploadedFile.query.filter_by(id=user.recent_file_id).first()  # user has uploaded file previously
-        # else: # check to see of there are other uploaded files - this is a double check, shouldn't get here
-        # file = UploadedFile.query.filter_by(user_id=user_id).order_by(UploadedFile.timestamp.desc()).first()
-        self.file_info = None
-        if file is not None:
-            self.file_info = [file.filename, file.uploaded_timestamp, file.data]
-        self.trans_df_actor = None
-        if self.file_info is not None:
-            if '.csv' in self.file_info[0]:
-                self.trans_df = pd.read_csv(BytesIO(self.file_info[2]))
-            elif '.xlsx' in self.file_info[0]:
-                self.trans_df = pd.read_excel(BytesIO(self.file_info[2]), "Transactions")
-            else:
-                raise Exception("unknown file type")
-            self.trans_df_actor = DataFrameActor(self.trans_df)
-
-    def add_new_source(self, file_details_list):
-        uploaded_file = UploadedFile(filename=file_details_list[0],
-                                     data=file_details_list[1],
-                                     user_id=self.user_id)
-        db.session.add(uploaded_file)
-        db.session.commit()
-        return uploaded_file.id
-
-    def set_recent_source(self, list):
-        user = User.query.filter_by(id=self.user_id).first()
-        user.recent_file_id = list[0]
-        db.session.add(user)
-        db.session.commit()
-
-    def get_details(self):
-        # just return file name and timestamp
-        return self.file_info[0:2] if self.file_info is not None else None
-
-    def get_sources(self):
-        files = UploadedFile.query.filter_by(user_id=self.user_id).order_by(
-            UploadedFile.uploaded_timestamp.desc()).all()
-        return files
-
-    def delete_sources(self):
-        for f in UploadedFile.query.filter_by(user_id=self.user_id):
-            db.session.delete(f)
-            db.session.commit()
-
-    def delete_source(self, file_id_list):
-        file = UploadedFile.query.filter_by(id=file_id_list[0]).first()
-        db.session.delete(file)
-        db.session.commit()
-
-    def get_actor(self):
-        return self.trans_df_actor if self.trans_df_actor is not None else None
-
 
 class DataFrameActor(object):
     #
@@ -83,95 +22,27 @@ class DataFrameActor(object):
         self.df["normalizer"] = [1 if x == 'debit' else -1 for x in self.df["Transaction Type"]]
         self.df['Amount'] = self.df['Amount'] * self.df['normalizer']
         self.df['Time_between_items'] = self.df.groupby('Category')['Date'].diff() / np.timedelta64(1, 'D')
-        self.cat_df_actor = CategoryDFActor(self.df)
 
-    def get_subset_df(self, category=None, cat_type=None, frequency=None):
-        # TODO throw exception on wrong combos of arguments
-        if category is not None:  # will ignore arguments cat_type and frequency if they are sent
-            return self.df.loc[self.df['Category'] == category]
-        else:
-            if frequency is not None:
-                # want items for category type and frequency
-                return self.df.loc[self.df['Category'].isin(self.cat_df_actor.get_categories(cat_type, frequency))]
-            else:
-                # want all items for a category type
-                return self.df.loc[self.df['Category'].isin(self.cat_df_actor.get_categories(cat_type))]
+    def get_subset_df(self, category_list=None):
+        return self.df.loc[self.df['Category'].isin(category_list)]
 
-    # implementation of info request interface methods
-    def get_category_info(self, sort_by_col_list):
-        # return html based on cat_df dataframe
-        return self.cat_df_actor.get_category_info().sort_values(sort_by_col_list, ascending=True).to_html(
-            float_format='{:,.2f}'.format)
+    # INFO REQUESTS
 
-    def get_category_metadata(self, frequency=None, category=None):
-        if frequency:
-            return self.cat_df_actor.get_category_metadata(frequency=frequency).to_html(float_format='{:,.2f}'.format)
-        elif category:
-            return self.cat_df_actor.get_category_metadata(category=category).to_html(float_format='{:,.2f}'.format)
+    def get_items_for(self, category=None):
+        # gets all items for a category grouped by year and month
+        return self.get_subset_df(category_list=[category])[self.get_detail_item_display_columns()]
 
-    def get_columns_for_spending(self):
+    def get_columns_for_spending_summary(self):
+        # columns for constructed spending summaries - list of lists...
         return ['Period', 'Count', 'Amount', 'of ave spend']
 
     # summary info is [[name of summary group, [included category list], [[last year summary], [last 12 months], etc]]
-
     def get_summary_info(self):
         return [['All Transaction', self.df.index.tolist(), self.get_summary_info_for(self.df)]]
 
-    def get_current_status(self, frequency=None, category=None):
-        pass
-
-    def get_top_line_spending_info(self):
-        temp_df = self.get_subset_df(cat_type='expense')
-        return [['All Spending', len(temp_df['Category'].unique().tolist()),
-                 self.get_summary_info_for(temp_df, self.get_monthly_budget())]]
-
-    def get_monthly_budget(self, df=None):
-        if df is None:
-            df = self.get_subset_df(cat_type='expense')
-        number_of_months = len(df['MthYr'].unique())
-        return df['Amount'].sum() / number_of_months
-
-    def get_summary_spending_info(self):
-        # return a list of lists: [['Total' ['last year', spending, budget, percent spent],
-        #                                 ['last 12', spending, budget, percent spent],
-        #                                           ...                               ],
-        #                          ['Weekly' ['last year', spending, budget, percent spent]]]
-        ret = []
-        frequencies = self.cat_df_actor.get_spending_category_frequencies()
-        for freq in frequencies:
-            temp_df = self.get_subset_df(cat_type='expense', frequency=freq)
-            monthly_budget = self.cat_df_actor.get_budget_for(category_type='expense', frequency=freq)
-            ret.append(
-                [freq, len(temp_df['Category'].unique().tolist()), self.get_summary_info_for(temp_df, monthly_budget)])
-        return ret
-
-    def get_category_details_for(self, frequency=None):
-        return self.get_cat_summary_spending_info(self.cat_df_actor.get_categories('expense', frequency))
-
-    def get_category_detail(self, category=None):
-        return self.get_cat_summary_spending_info([category])
-
-    def get_cat_summary_spending_info(self, list_of_categories):
-        # return a list of lists: [['Total' ['last year', spending, budget, percent spent],
-        #                                 ['last 12', spending, budget, percent spent],
-        #                                           ...                               ],
-        #                          ['Weekly' ['last year', spending, budget, percent spent]]]
-        ret = []
-        for cat in list_of_categories:
-            temp_df = self.get_subset_df(category=cat)
-            monthly_budget = self.cat_df_actor.get_budget_for(category=cat)
-            ret.append(
-                [cat, len(temp_df['Category'].unique().tolist()), self.get_summary_info_for(temp_df, monthly_budget)])
-        return ret
-
-    def get_recent_items_for(self, cat_type=None, category=None, frequency=None):
+    def get_recent_items_for(self, category_list):
         # recent is this month and last month
-        if category is not None:
-            temp_df = self.get_subset_df(category=category)
-        elif cat_type is not None and frequency is not None:
-            temp_df = self.get_subset_df(cat_type=cat_type, frequency=frequency)
-        else:
-            raise Exception
+        temp_df = self.get_subset_df(category_list)
         this_year = str(date.today().year)
         this_month = date.today().month
         # need to check if current month is january, then previous month is last year december
@@ -181,14 +52,12 @@ class DataFrameActor(object):
                            ((temp_df["Year"] == prev_year) & (temp_df[
                                                                   "Month_as_dec"] == prev_month)), self.get_detail_item_display_columns()].to_html()
 
-    def get_frequency(self, category=None):
-        return self.cat_df_actor.get_frequency(category=category)
+    # end INFO REQUESTS
+#    def get_category_details_for(self, frequency=None):
+ #       return self.get_cat_summary_spending_info(self.cat_df_actor.get_categories('expense', frequency))
 
-    def get_items_for(self, category=None):
-        # gets all items for a category grouped by year and month
-        return self.get_subset_df(category=category)[self.get_detail_item_display_columns()].sort_values(['Date'],
-                                                                                                         ascending=False).to_html(
-            float_format='{:,.2f}'.format)
+#    def get_category_detail(self, category=None):
+#        return self.get_cat_summary_spending_info([category])
 
     def get_detail_item_display_columns(self):
         return ["Date", "Category", "Amount", "Description"]  # eventually this will be a user setting
@@ -230,7 +99,8 @@ class DataFrameActor(object):
             ((self.df['Year'] == str(date.today().year)) & (temp_df["Month_as_dec"] == date.today().month))], budget))
         return ret
 
-    def get_summary_detail(self, name, detail_df, budget):
+    @staticmethod
+    def get_summary_detail(name, detail_df, budget):
         total_spending = detail_df['Amount'].sum()
         percent_budget = total_spending / budget * 100
         return [name, detail_df['Amount'].count(),
@@ -292,23 +162,21 @@ class CategoryDFActor:
         # those from spending
         self.cat_df['category_type'] = self.cat_df.apply(self.det_cat, axis=1)
         self.cat_df['frequency_index'] = self.cat_df.apply(self.calc_freq_index, axis=1)
-        self.cat_df['frequency_category'] = self.cat_df.apply(self.det_freq_cat, axis=1)
+        self.cat_df['frequency'] = self.cat_df.apply(self.det_freq_cat, axis=1)
+        self.cat_df['state'] = self.cat_df.apply(self.get_state, axis=1)
         self.cat_df.replace([np.inf, -np.inf, np.nan], 1)
         self.cat_df['cluster'] = self.do_clustering()
-        self.temp_type_freq_group = self.cat_df.groupby(['category_type', 'frequency_category'])
+        self.temp_type_freq_group = self.cat_df.groupby(['category_type', 'frequency'])
 
-    def get_category_info(self):
-        return self.cat_df
-
-    def get_frequency(self, category=None):
-        return self.cat_df.loc[category]['frequency_category']
-
-    def get_category_summary_info_columns(self):
-        return self.cat_df.columns
+    # helper methods in creating category df
 
     def det_cat(self, row):
         # return 'investment' if row['large_percent'] > .4 else 'expense' if row['debit_percent'] > .6 else 'income'
         return 'expense' if row['debit_percent'] > .51 else 'income'
+
+    def get_state(self, row):
+        #return CategoryStateAccess.get_current_state(row['Category'])
+        return 'happy'
 
     def get_category_types(self):
         return ['expense', 'income']
@@ -330,6 +198,27 @@ class CategoryDFActor:
         else:
             return 'sporadic'
 
+    # end helper methods
+
+    # INFO REQUESTS
+
+    def get_category_info(self):
+        return self.cat_df
+
+    def get_category_metadata(self, frequency=None, category=None):
+        if frequency:
+            categories = self.get_categories('expense', frequency)
+            return self.cat_df.loc[categories, self.get_category_metadata_cols()]
+        elif category:
+            return self.cat_df.loc[[category], self.get_category_metadata_cols()]
+        else:
+            return None
+
+    def get_frequency(self, category=None):
+        return self.cat_df.loc[category]['frequency']
+
+    # end INFO REQUESTS
+
     def get_spending_category_frequencies(self):
         return ['weekly', 'biweekly', 'monthly', 'quarterly', 'sporadic', 'rare']
 
@@ -341,29 +230,21 @@ class CategoryDFActor:
         else:
             # need to include check to see if frequency in spending categories list
             return self.cat_df.loc[((self.cat_df['category_type'] == 'expense') & (
-                    self.cat_df['frequency_category'] == frequency))].index.tolist()
+                    self.cat_df['frequency'] == frequency))].index.tolist()
 
     def get_budget_for(self, category_type=None, frequency=None, category=None):
         if category:
             return self.cat_df.loc[category]['ave_mnthly_spend']
         elif category_type and frequency:
             return self.temp_type_freq_group['ave_mnthly_spend'].sum()[category_type, frequency]
-        else:
-            return 0
+        elif category_type:
+            return self.cat_df.loc[self.cat_df['category_type'] == category_type].sum()['ave_mnthly_spend']
 
     def get_category_metadata_cols(self):
-        return ['last date', 'timespan', 'ave diff', 'large_percent', 'frequency_index']
-
-    def get_category_metadata(self, frequency=None, category=None):
-        if frequency:
-            categories = self.get_categories('expense', frequency)
-        elif category:
-            categories = [category]
-        return self.cat_df.loc[categories, self.get_category_metadata_cols()]
-
+        return ['frequency', 'last date', 'timespan', 'ave diff', 'large_percent', 'frequency_index']
 
     def do_clustering(self):
-        pass
+        return True
         # km = KMeans(n_clusters=5, init='random', n_init=10, max_iter=300, tol=1e-04, random_state=0)
         # return km.fit_predict(self.cat_df[['frequency_index']])
 

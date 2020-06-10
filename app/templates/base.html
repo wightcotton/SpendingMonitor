@@ -18,6 +18,8 @@
              |
             <a href="{{ url_for('file_admin') }}">Existing Files </a>
              |
+           <a href="{{ url_for('state_admin') }}">Manage Category States </a>
+             |
             {% if current_user.is_anonymous %}
             <a href="{{ url_for('login') }}">Login</a>
             {% else %}
