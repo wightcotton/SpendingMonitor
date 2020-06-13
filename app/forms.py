@@ -10,6 +10,7 @@ class CategorySummaryForm(FlaskForm):
     state_radio_button = RadioField('current state')
     change_state = SubmitField('update state')
     prev_states = SelectField()
+    delete_prev_states_button = SubmitField('delete all')
 
 
 class FileAdminForm(FlaskForm):

@@ -142,13 +142,7 @@ class InfoRequestHandler(object):
         return self.cat_state_actor.get_categories_current_state()
 
     def get_categories_by_current_state(self):
-        ret_dict = {}
-        for t in self.get_categories_current_state():
-            if t[1] in ret_dict:
-                ret_dict[t[1]].append(t[0])
-            else:
-                ret_dict[t[1]] = [t[0]]
-        return [[key, value] for key, value in ret_dict.items()]
+        return self.cat_state_actor.get_categories_by_current_state()
 
     def get_category_states(self):
         return self.cat_state_actor.get_lookup_states()
@@ -161,5 +155,8 @@ class InfoRequestHandler(object):
 
     def delete_lookup_states(self, id_list):
         self.cat_state_actor.delete_lookup_states(state_id_list=id_list)
+
+    def delete_category_states(self, category):
+        self.cat_state_actor.delete_category_states(category)
 
     # end CATEGORY STATE

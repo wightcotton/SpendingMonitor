@@ -36,7 +36,10 @@ def category(cat):
         return redirect(url_for('upload_file'))  # someday need to abstract this
     # few categories will have existing state
     if request.method == 'POST':
-        info_requester.set_category_current_state(cat, form.state_radio_button.data)
+        if form.change_state.data:
+            info_requester.set_category_current_state(cat, form.state_radio_button.data)
+        elif form.delete_prev_states_button.data:
+            info_requester.delete_category_states(cat)
         redirect(url_for('category', cat=cat))
     form.state_radio_button.choices = [(s.id, s.state) for s in (info_requester.get_state_lookups() or [])]
     form.state_radio_button.default = info_requester.get_current_state_id(cat) or 0
@@ -109,7 +112,8 @@ def index():
                            title='Home',
                            today=date.today(),
                            columns=info_requester.get_columns_for_spending_summary(),
-                           topline_spending_summary=info_requester.get_top_line_spending_info())
+                           topline_spending_summary=info_requester.get_top_line_spending_info(),
+                           categories_by_state=info_requester.get_categories_by_current_state())
 
 
 @app.route('/items/<category>', methods=["GET"])
@@ -177,7 +181,6 @@ def state_admin():
             info_requester.delete_lookup_states([int(form.states.data)])
         redirect(url_for('state_admin'))
     form.states.choices = [(s.id, str(s.id) + ': ' + s.state) for s in (info_requester.get_state_lookups() or [])]
-
     return render_template('state_admin.html',
                            title='files...',
                            form=form,

@@ -2,6 +2,7 @@ from app import db, login
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_login import UserMixin
 import datetime
+from sqlalchemy.sql import func
 
 class User(UserMixin, db.Model):
     __tablename__ = 'user'
@@ -38,7 +39,7 @@ class CategoryState(db.Model):
     category = db.Column(db.String(64), index=True)
     state = db.Column(db.Integer, db.ForeignKey('state_lookup.id'))
     comment = db.Column(db.Text)
-    timestamp = db.Column(db.TIMESTAMP, index=True, default=datetime.datetime.now())
+    timestamp = db.Column(db.TIMESTAMP, index=True, default=func.now())
 
 class UploadedFile(db.Model):
     __tablename__ = 'uploaded_file'

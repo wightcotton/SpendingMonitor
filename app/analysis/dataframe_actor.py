@@ -3,6 +3,8 @@ import pandas as pd
 import numpy as np
 from datetime import date, datetime
 import math
+from flask_login import current_user
+
 from app.database_access.category_state_access import CategoryStateAccess
 
 
@@ -23,14 +25,20 @@ class DataFrameActor(object):
         self.df['Amount'] = self.df['Amount'] * self.df['normalizer']
         self.df['Time_between_items'] = self.df.groupby('Category')['Date'].diff() / np.timedelta64(1, 'D')
 
-    def get_subset_df(self, category_list=None):
+    def get_subset_df(self, category_list=None, override_ignore=False):
+        if not override_ignore:
+            for item in CategoryStateAccess(current_user.id).get_categories_current_state_for('ignore'):
+                try:
+                    category_list.remove(item)
+                except ValueError:
+                    pass
         return self.df.loc[self.df['Category'].isin(category_list)]
 
     # INFO REQUESTS
 
     def get_items_for(self, category=None):
         # gets all items for a category grouped by year and month
-        return self.get_subset_df(category_list=[category])[self.get_detail_item_display_columns()]
+        return self.get_subset_df(category_list=[category], override_ignore=True)[self.get_detail_item_display_columns()]
 
     def get_columns_for_spending_summary(self):
         # columns for constructed spending summaries - list of lists...
@@ -38,7 +46,8 @@ class DataFrameActor(object):
 
     # summary info is [[name of summary group, [included category list], [[last year summary], [last 12 months], etc]]
     def get_summary_info(self):
-        return [['All Transaction', self.df.index.tolist(), self.get_summary_info_for(self.df)]]
+        categories = self.df.index.tolist()
+        return [['All Transaction', categories, self.get_summary_info_for(self.get_subset_df(categories))]]
 
     def get_recent_items_for(self, category_list):
         # recent is this month and last month
@@ -154,6 +163,7 @@ class CategoryDFActor:
         self.cat_df.set_axis(
             ['count', 'first date', 'last date', 'timespan', 'ave diff', 'cat freq', 'total spend', 'large', 'debit'],
             axis=1, inplace=True)
+        self.cat_df['Category'] = self.cat_df.index
         self.number_of_months = len(full_df['MthYr'].unique())
         self.cat_df['ave_mnthly_spend'] = self.cat_df['total spend'].map(lambda s: s / self.number_of_months)
         self.cat_df['large_percent'] = self.cat_df['large'] / self.cat_df['count']
@@ -175,8 +185,7 @@ class CategoryDFActor:
         return 'expense' if row['debit_percent'] > .51 else 'income'
 
     def get_state(self, row):
-        #return CategoryStateAccess.get_current_state(row['Category'])
-        return 'happy'
+        return CategoryStateAccess(current_user.id).get_current_state(row['Category'])
 
     def get_category_types(self):
         return ['expense', 'income']
@@ -236,12 +245,15 @@ class CategoryDFActor:
         if category:
             return self.cat_df.loc[category]['ave_mnthly_spend']
         elif category_type and frequency:
-            return self.temp_type_freq_group['ave_mnthly_spend'].sum()[category_type, frequency]
+            return self.cat_df.loc[(self.cat_df['category_type'] == category_type) &
+                            (self.cat_df['frequency'] == frequency) &
+                            (self.cat_df['state'] != 'ignore')].sum()['ave_mnthly_spend']
         elif category_type:
-            return self.cat_df.loc[self.cat_df['category_type'] == category_type].sum()['ave_mnthly_spend']
+            return self.cat_df.loc[(self.cat_df['category_type'] == category_type) &
+                            (self.cat_df['state'] != 'ignore')].sum()['ave_mnthly_spend']
 
     def get_category_metadata_cols(self):
-        return ['frequency', 'last date', 'timespan', 'ave diff', 'large_percent', 'frequency_index']
+        return ['frequency', 'state', 'ave_mnthly_spend', 'last date', 'timespan', 'ave diff', 'large_percent', 'frequency_index']
 
     def do_clustering(self):
         return True

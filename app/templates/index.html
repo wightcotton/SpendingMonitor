@@ -6,4 +6,14 @@
             {{ list[0] }}, including  {{ list[1] }} categories <a href="{{ url_for('spending_analysis') }}">(details)</a>
             {% include 'snippets/summary_table.html' %}
         {% endfor %}
+    <br>
+    <h3>states with categories currently within</h3>
+    {% for i in categories_by_state %}
+        {{ i[0] }}:
+        {% for l in i[1] %}
+            <a href="{{ url_for('category', cat=l) }}">{{ l }}</a>
+        {% endfor %}
+        <br>
+    {% endfor %}
+    <br>
 {% endblock %}
