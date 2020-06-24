@@ -1,0 +1,20 @@
+    <table border="1px solid black">
+        <tr>
+        <th>Category</th>
+        {% for h in headings %}
+            <th>{{ h }}</th>
+        {% endfor %}
+        </tr>
+        {% for k, v in metadata.items() %}
+            <tr>
+                <td><a href="{{ url_for('category', cat=k) }}">{{ k }}</a></td>
+                {% for l, u in v.items() %}
+                <td>{% if u is float %}
+                    {{ '{:,.2f}'.format(u) }}
+                    {% else %}
+                    {{ u }}
+                {% endif %}</td>
+                {% endfor %}
+            </tr>
+        {% endfor %}
+    </table>

@@ -13,7 +13,7 @@
         {% include 'snippets/summary_table.html' %}
     {% endfor %}
     <h3>metadata</h3>
-    {{ metadata_items | safe }}
+    {% include 'snippets/metadata.html' %}
     <h3>All Items</h3>
     {{ items | safe }}<br>
     <h3>Past States</h3>

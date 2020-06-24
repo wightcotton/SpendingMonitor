@@ -20,6 +20,8 @@
              |
            <a href="{{ url_for('state_admin') }}">Manage Category States </a>
              |
+           <a href="{{ url_for('info') }}">Info</a>
+             |
             {% if current_user.is_anonymous %}
             <a href="{{ url_for('login') }}">Login</a>
             {% else %}

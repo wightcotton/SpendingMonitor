@@ -1,7 +1,6 @@
 from app.database_access.uplodedfile_access import FileUpload
-from app.analysis.dataframe_actor import DataFrameActor, CategoryDFActor
+from app.analysis.dataframe_actor import DataFrameActor, CategoryDFActor, SummaryActor
 from app.database_access.category_state_access import CategoryStateAccess
-from collections import defaultdict
 
 
 class InfoRequestHandler(object):
@@ -20,7 +19,11 @@ class InfoRequestHandler(object):
     def __init__(self, user_id):
         self.file_actor = FileUpload(user_id)
         self.trans_actor = DataFrameActor(self.file_actor.get_df())
-        self.cat_actor = CategoryDFActor(self.file_actor.get_df())
+        self.cat_actor = CategoryDFActor(self.trans_actor)
+        self.summary_actor = SummaryActor()
+        self.summary_actor.set_top_line_summary_list(self.cat_actor.get_top_line_summary(self.trans_actor))
+        self.summary_actor.set_frequencies_summary_dict(self.cat_actor.get_frequencies_summary(self.trans_actor))
+        self.summary_actor.set_categories_summary_dict(self.cat_actor.get_categories_summary(self.trans_actor))
         self.cat_state_actor = CategoryStateAccess(user_id)
 
     # FILE
@@ -68,43 +71,25 @@ class InfoRequestHandler(object):
     # category
 
     def get_top_line_spending_info(self):
-        categories = self.cat_actor.get_categories(category_type='expense')
-        temp_df = self.trans_actor.get_subset_df(category_list=categories)
-        return [['All Spending', len(temp_df['Category'].unique().tolist()),
-                 self.trans_actor.get_summary_info_for(temp_df, self.cat_actor.get_budget_for('expense'))]]
+        return self.summary_actor.get_top_line_spending_info()
 
     def get_freq_summary_spending_info(self, list_of_frequencies=None):
-        # returns summary of spending by frequencies, if no list given, do all frequencies
-        # return a list of lists: [['Total' ['last year', spending, budget, percent spent],
-        #                                 ['last 12', spending, budget, percent spent],
-        #                                           ...                               ],
-        #                          ['Weekly' ['last year', spending, budget, percent spent]]]
-        ret = []
         if list_of_frequencies is None:
-            list_of_frequencies = self.cat_actor.get_spending_category_frequencies()
-        for freq in list_of_frequencies:
-            categories = self.cat_actor.get_categories(category_type='expense', frequency=freq)
-            temp_df = self.trans_actor.get_subset_df(category_list=categories)
-            monthly_budget = self.cat_actor.get_budget_for(category_type='expense', frequency=freq)
-            ret.append([freq, len(temp_df['Category'].unique().tolist()),
-                        self.trans_actor.get_summary_info_for(temp_df, monthly_budget)])
-        return ret
+            list_of_frequencies = self.cat_actor.get_frequencies()
+        return self.summary_actor.get_freq_summary_spending_info(list_of_frequencies)
 
     def get_cat_summary_spending_info(self, list_of_categories=None, frequency=None):
-        # returns summary of spending by categories
-        # return a list of lists: [['Total' ['last year', spending, budget, percent spent],
-        #                                 ['last 12', spending, budget, percent spent],
-        #                                           ...                               ],
-        #                          ['Weekly' ['last year', spending, budget, percent spent]]]
-        ret = []
-        if frequency:
-            list_of_categories = self.cat_actor.get_categories('expense', frequency=frequency)
-        for cat in list_of_categories:
-            temp_df = self.trans_actor.get_subset_df(category_list=[cat])
-            monthly_budget = self.cat_actor.get_budget_for(category=cat)
-            ret.append(
-                [cat, len(temp_df['Category'].unique().tolist()), self.trans_actor.get_summary_info_for(temp_df, monthly_budget)])
-        return ret
+        if list_of_categories is None and frequency is None:
+            list_of_categories = self.cat_actor.get_categories('expense')
+        elif list_of_categories is None:
+            list_of_categories = self.cat_actor.get_categories(category_type='expense', frequency=frequency)
+        return self.summary_actor.get_cat_summary_spending_info(list_of_categories)
+
+    def get_freq_examine_list(self):
+        return self.summary_actor.get_freq_examine_list()
+
+    def get_cat_examine_list(self):
+        return self.summary_actor.get_cat_examine_list()
 
     # end summary generation
 
@@ -119,8 +104,12 @@ class InfoRequestHandler(object):
         return self.cat_actor.get_category_info().sort_values(sort_by_col_list, ascending=True).to_html(
             float_format='{:,.2f}'.format)
 
+    def get_category_metadata_headings(self):
+        return self.cat_actor.get_category_metadata_cols()
+
     def get_category_metadata(self, frequency=None, category=None):
-        return self.cat_actor.get_category_metadata(frequency=frequency, category=category).to_html()
+        return self.cat_actor.get_category_metadata(frequency=frequency, category=category).to_dict(orient='index')
+
 
     def get_frequency(self, category=None):
         return self.cat_actor.get_frequency(category=category)

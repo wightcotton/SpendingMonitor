@@ -54,7 +54,8 @@ def category(cat):
                            frequency=info_requester.get_frequency(cat),
                            columns=info_requester.get_columns_for_spending_summary(),
                            spending_summary_info=info_requester.get_cat_summary_spending_info(list_of_categories=[cat]),
-                           metadata_items=info_requester.get_category_metadata(category=cat),
+                           headings=info_requester.get_category_metadata_headings(),
+                           metadata=info_requester.get_category_metadata(category=cat),
                            items=info_requester.get_items_for(category=cat))
 
 
@@ -92,8 +93,8 @@ def frequency_categories(frequency):
     return render_template('frequency_categories.html', title='summary of categories for ' + frequency,
                            file_info=[file_info[0], file_info[1]],
                            frequency=frequency,
-                           spending_summary_info=info_requester.get_cat_summary_spending_info(frequency=frequency),
-                           items=info_requester.get_category_metadata(frequency=frequency))
+                           headings=info_requester.get_category_metadata_headings(),
+                           metadata=info_requester.get_category_metadata(frequency=frequency))
 
 
 @app.route('/', methods=['GET', 'POST'])
@@ -111,9 +112,21 @@ def index():
                            file_info=[file_info[0], file_info[1]],
                            title='Home',
                            today=date.today(),
+                           annual_budget=info_requester.get_budget_for(category_type='expense') * 12,
                            columns=info_requester.get_columns_for_spending_summary(),
                            topline_spending_summary=info_requester.get_top_line_spending_info(),
+                           freq_examine_list=info_requester.get_freq_examine_list(),
+                           cat_examine_list=info_requester.get_cat_examine_list(),
                            categories_by_state=info_requester.get_categories_by_current_state())
+
+
+@app.route('/info')
+@login_required
+def info():
+    info_requester = InfoRequestHandler(current_user.id)
+    file_info = info_requester.get_file_details()
+    return render_template('info.html',
+                           file_info=[file_info[0], file_info[1]])
 
 
 @app.route('/items/<category>', methods=["GET"])
@@ -156,7 +169,6 @@ def spending_analysis():
     file_info = info_requester.get_file_details()
     if not file_info:
         return redirect(url_for('upload_file'))  # someday need to abstract this
-    # spending summary
     return render_template('spending_analysis.html',
                            file_info=[file_info[0], file_info[1]],
                            title='Home',
