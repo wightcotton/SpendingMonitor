@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<h3>Definitions</h3>
+    <dt>Home: All Spending</dt>
+    <ul style="list-style-type:circle">
+        <li>Is a summary of all spending for all included (not ignored) categories.</li>
+        <li><i><b>last year</b></i> is last full calendar year.</li>
+        Last 12 months is last 12 full months.
+        This year is this year so far, including the current month.
+        Last quarter is the last full quarter.
+        This quarter is this quarter so for, including the current month.
+        Last month is the last full month.
+        This month is this month so far.
+        Count is the number of included transactions.
+        Amount is the total amount of spending represented by the those included transactions.
+        of ave spend is the percentage of actual spending based on what was expected spending based on spending history.
+        (details) is a shortcut to Spending Analysis.
+    </ul><br>
+    <dt>Home: Flagged States</dt>
+    <dd>Categories are flagged to determine if they need to be ignored or fixed - or included again.
+        The default state for a category is 'include'. Categories can flagged with the Category Summary page.
+        Examine categories are flagged to be looked at.
+        They may have been flagged by the application or by you as you looked the Category Summary
+        Ignore categories will not be included in any summary of spending.
+        Fix categories are to be looked at and changed in the source of the transactions (Mint, Quicken...)
+        Include categories are to be included after having been flagged somehow.
+        You can click on any category to get to its Category Summary.
+    </dd>
+    <dt>Spending Analysis: Spending Summary</dt>
+        <dd>annual spending is..<a href="#ave_mnthly_spend">Average Monthly Spend</a> </dd>
+        <dt><a name="ave_mthly_spend">Average Monthly Spend</a></dt>
+    </dl>
+
+{% endblock %}
