@@ -1,0 +1,14 @@
+    <table border="1px solid black">
+        {% for i in metadata_list %}
+            <tr>
+                <td><a href="{{ url_for('category', cat=i[0]) }}">{{ i[0] }}</a></td>
+                {% for j in i[1:] %}
+                <td>{% if j is float %}
+                    {{ '{:,.2f}'.format(j) }}
+                    {% else %}
+                    {{ j }}
+                {% endif %}</td>
+                {% endfor %}
+            </tr>
+        {% endfor %}
+    </table>

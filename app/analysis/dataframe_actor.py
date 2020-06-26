@@ -226,12 +226,12 @@ class CategoryDFActor:
                 'large_percent',
                 'frequency_index']
 
-    def get_category_metadata(self, frequency=None, category=None):
+    def get_category_metadata(self, frequency=None, categories=None):
         if frequency:
             categories = self.get_categories('expense', frequency)
             return self.cat_df.loc[categories, self.get_category_metadata_cols()]
-        elif category:
-            return self.cat_df.loc[[category], self.get_category_metadata_cols()]
+        elif categories:
+            return self.cat_df.loc[categories, self.get_category_metadata_cols()]
         else:
             return None
 
@@ -362,13 +362,13 @@ class SummaryActor(object):
         return ret_list
 
     def get_freq_examine_list(self):
-        return self.create_examine_list(self.frequencies_summary_dict)
+        return self.create_examine_list_old(self.frequencies_summary_dict)
 
     def get_cat_examine_list(self):
         return self.create_examine_list(self.categories_summary_dict)
 
     @staticmethod
-    def create_examine_list(focus_dict):
+    def create_examine_list_old(focus_dict):
         ret_list = []
         for k, v in focus_dict.items():
             tmp_list = []
@@ -377,4 +377,16 @@ class SummaryActor(object):
                     tmp_list.append(i[0] + ' over spent (' + str(i[3]) + ')')
             if len(tmp_list) > 0:
                 ret_list.append([k, tmp_list])
+        return ret_list
+
+    @staticmethod
+    def create_examine_list(focus_dict):
+        ret_list = []
+        for k, v in focus_dict.items():
+            examine = False
+            for i in v[2]:
+                if float(i[3].replace('%', '').replace(',', '')) > 110:
+                    examine = True
+            if examine:
+                ret_list.append(k)
         return ret_list
