@@ -3,13 +3,17 @@
 {% block content %}
     <h4>annual budget: {{ '${:,.2f}'.format(annual_budget) }} (based on spending)</h4>
     Topline Spending Summary as of {{ today }}<br>
+    <!-- topline_spending_summary is a list
+      [0] contains name of summary
+      [1] contains either the number of categories or number of items
+      [2] contains list of lists containing summary rows with cell data
         {% for list in topline_spending_summary %}
             {{ list[0] }}, including  {{ list[1] }} categories <a href="{{ url_for('spending_analysis') }}">(details)</a>
             {% include 'snippets/summary_table.html' %}
         {% endfor %}
     <br>
     <h3>Things to be looked at</h3>
-    Frequencies
+    <h3>Frequencies</h3>
     {% for i in freq_examine_list %}
         <a href="{{ url_for('frequency_categories', frequency=i[0]) }}">{{ i[0] }}</a><br>
         <ul>
@@ -18,16 +22,10 @@
         {% endfor %}
         </ul>
     {% endfor %}
+
     <br>
-    Catogories<br>
-    {% for i in cat_examine_list %}
-        <a href="{{ url_for('category', cat=i[0]) }}">{{ i[0] }}</a><br>
-        <ul>
-        {% for l in i[1] %}
-            <li>{{ l }}</li>
-        {% endfor %}
-        </ul>
-    {% endfor %}
+    <h3>Categories to investigate</h3>
+        {% include 'snippets/metadata_from_list.html' %}
     <br>
     <h3>Flagged categories</h3>
     {% for i in categories_by_state %}

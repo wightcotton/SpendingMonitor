@@ -107,9 +107,17 @@ class InfoRequestHandler(object):
     def get_category_metadata_headings(self):
         return self.cat_actor.get_category_metadata_cols()
 
-    def get_category_metadata(self, frequency=None, category=None):
-        return self.cat_actor.get_category_metadata(frequency=frequency, category=category).to_dict(orient='index')
+    def get_category_metadata(self, frequency=None, categories=None):
+        return self.cat_actor.get_category_metadata(frequency=frequency, categories=categories).to_dict(orient='index')
 
+    def get_category_metadata_as_list(self, frequency=None, categories=None):
+        temp_df = self.cat_actor.get_category_metadata(frequency=frequency, categories=categories)
+        temp_df.reset_index(inplace=True)
+        temp_df = temp_df.rename(columns={'index': 'category'})
+        temp_df.sort_values(by=['ave_mnthly_spend'], ascending=False, inplace=True)
+        return_list = temp_df.values.tolist()
+        return_list.insert(0, temp_df.columns.values.tolist())
+        return return_list
 
     def get_frequency(self, category=None):
         return self.cat_actor.get_frequency(category=category)
