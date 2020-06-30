@@ -139,7 +139,13 @@ class InfoRequestHandler(object):
         return self.cat_state_actor.get_categories_current_state()
 
     def get_categories_by_current_state(self):
-        return self.cat_state_actor.get_categories_by_current_state()
+        ret_list = self.cat_state_actor.get_categories_by_current_state()
+        all_categories = self.cat_actor.get_categories('expense', frequency='all_spending')
+        for state_list in ret_list:
+            for cat in state_list[1]:
+                if cat not in all_categories:
+                    state_list[1].remove(cat)
+        return ret_list
 
     def get_category_states(self):
         return self.cat_state_actor.get_lookup_states()
