@@ -12,20 +12,22 @@
             {% include 'snippets/summary_table.html' %}
         {% endfor %}
     <br>
-    <h3>Things to be looked at</h3>
-    <h3>Frequencies</h3>
-    {% for i in freq_examine_list %}
-        <a href="{{ url_for('frequency_categories', frequency=i[0]) }}">{{ i[0] }}</a><br>
-        <ul>
-        {% for l in i[1] %}
-            <li>{{ l }}</li>
+    <details>
+    <summary>categories to be looked at...</summary>
+    <details>
+    <summary>over spending tolerance by summary tag</summary>
+        {% for i in examine_cat_by_summary_tag %}
+            <details><summary>{{ i[0] }}</summary>
+            {% for j in i[1] %}
+                <a href="{{ url_for('category', cat=j) }}">{{ j }}</a><br>
+            {% endfor %}
+            </details>
         {% endfor %}
-        </ul>
-    {% endfor %}
-
-    <br>
-    <h3>Categories to investigate</h3>
-        {% include 'snippets/metadata_from_list.html' %}
+    </details>
+    <details><summary>categories over tolerance ordered by monthly spending</summary>
+       {% include 'snippets/metadata_from_list.html' %}
+    </details>
+    </details>
     <br>
     <h3>Flagged categories</h3>
     {% for i in categories_by_state %}

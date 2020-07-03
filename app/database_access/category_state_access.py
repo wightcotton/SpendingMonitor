@@ -55,8 +55,11 @@ class CategoryStateAccess(object):
             filter(CategoryState.state == StateLookup.id). \
             filter(CategoryState.category == category).order_by(CategoryState.timestamp.desc()).all()
 
-    def delete_category_states(self, category):
-        category_state_records = CategoryState.query.filter_by(category=category).all()
+    def delete_category_states(self, category=None, state_id=None):
+        if category:
+            category_state_records = CategoryState.query.filter_by(category=category).all()
+        elif state_id:
+            category_state_records = CategoryState.query.filter_by(state=state_id).all()
         for r in category_state_records:
             db.session.delete(r)
         db.session.commit()
@@ -86,7 +89,8 @@ class CategoryStateAccess(object):
         if state_id_list is None:
             return 'Nothing to delete'
         for k in state_id_list:
-            state_record = StateLookup.query.filter(user_id=self.user_id, id=k).first()
+            self.delete_category_states(state_id=k)
+            state_record = StateLookup.query.filter_by(user_id=self.user_id, id=k).first()
             db.session.delete(state_record)
             db.session.commit()
         return 'Completed'

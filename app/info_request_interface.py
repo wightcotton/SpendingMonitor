@@ -67,6 +67,8 @@ class InfoRequestHandler(object):
     def get_summary_info(self):
         return self.trans_actor.get_summary_info()
 
+    # SUMMARY
+
     # next three methods generate same summary info as list of lists by all spending (top line), by frequency and by
     # category
 
@@ -90,6 +92,9 @@ class InfoRequestHandler(object):
 
     def get_cat_examine_list(self):
         return self.summary_actor.get_cat_examine_list()
+
+    def get_examine_list_by_summary_tag(self):
+        return self.summary_actor.get_examine_list_by_summary_tag()
 
     # end summary generation
 

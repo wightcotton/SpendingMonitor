@@ -116,6 +116,7 @@ def index():
                            annual_budget=info_requester.get_budget_for(category_type='expense') * 12,
                            columns=info_requester.get_columns_for_spending_summary(),
                            topline_spending_summary=info_requester.get_top_line_spending_info(),
+                           examine_cat_by_summary_tag=info_requester.get_examine_list_by_summary_tag(),
                            freq_examine_list=info_requester.get_freq_examine_list(),
                            metadata_headings=info_requester.get_category_metadata_headings(),
                            metadata_list=info_requester.get_category_metadata_as_list(categories=examine_categories),
