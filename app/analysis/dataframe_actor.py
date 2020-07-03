@@ -3,6 +3,7 @@ import numpy as np
 from datetime import date, datetime
 import math
 from flask_login import current_user
+from config import UserConfig
 
 from app.database_access.category_state_access import CategoryStateAccess
 
@@ -365,28 +366,54 @@ class SummaryActor(object):
         return self.create_examine_list_old(self.frequencies_summary_dict)
 
     def get_cat_examine_list(self):
-        return self.create_examine_list(self.categories_summary_dict)
+        return self.create_examine_cat_list(self.categories_summary_dict)
+
+    def get_examine_list_by_summary_tag(self):
+        return self.create_examine_list_by_summary_tag(self.categories_summary_dict)
 
     @staticmethod
     def create_examine_list_old(focus_dict):
+        # returns list of messages related to exceeding spending in any frequency by category
         ret_list = []
         for k, v in focus_dict.items():
             tmp_list = []
             for i in v[2]:
-                if float(i[3].replace('%', '').replace(',', '')) > 110:
+                if SummaryActor.get_percent_as_float(i[3]) > UserConfig.SUMMARY_TOLERANCE:
                     tmp_list.append(i[0] + ' over spent (' + str(i[3]) + ')')
             if len(tmp_list) > 0:
                 ret_list.append([k, tmp_list])
         return ret_list
 
     @staticmethod
-    def create_examine_list(focus_dict):
+    def create_examine_cat_list(focus_dict):
+        # returns list of categories that exceed spending with in any frequency
         ret_list = []
         for k, v in focus_dict.items():
             examine = False
             for i in v[2]:
-                if float(i[3].replace('%', '').replace(',', '')) > 110:
+                if SummaryActor.get_percent_as_float(i[3]) > UserConfig.SUMMARY_TOLERANCE:
                     examine = True
             if examine:
                 ret_list.append(k)
         return ret_list
+
+    @staticmethod
+    def create_examine_list_by_summary_tag(focus_dict):
+        # returns list of categories exceeding spending by frequency
+        ret_list = []
+        for k, v in focus_dict.items():
+            for i in v[2]:
+                if SummaryActor.get_percent_as_float(i[3]) > UserConfig.SUMMARY_TOLERANCE:
+                    add_new_tag = True
+                    for r in ret_list:
+                        if i[0] == r[0]:
+                            r[1].append(k)
+                            add_new_tag = False
+                    if add_new_tag:
+                        ret_list.append([i[0], [k]])
+        return ret_list
+
+    @staticmethod
+    def get_percent_as_float(percent_string):
+        return float(percent_string.replace('%', '').replace(',', ''))
+
