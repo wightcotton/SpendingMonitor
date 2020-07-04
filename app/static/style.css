@@ -1,4 +1,16 @@
-summary {
-    display: block;
-    font-size: 25px;
+details > summary {
+    padding: 40px;
+    width: 200px;
+    background-color: #eeeeee;
+    border: none;
+    box-shadow: 1px 1px 2px #bbbbbb;
+    cursor: pointer;
+    margin-left: 40px;
 }
+
+details {
+    margin-left: 20em;
+    color: blue;
+}
+
+.tab { margin-left: 40px; }

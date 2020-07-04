@@ -1,12 +1,13 @@
 {% extends "base.html" %}
 
 {% block content %}
-    <h4>annual budget: {{ '${:,.2f}'.format(annual_budget) }} (based on spending)</h4>
-    Topline Spending Summary as of {{ today }}<br>
+    <h4>annualized spending: {{ '${:,.2f}'.format(annual_budget) }}</h4>
+    Topline Spending Summary<br>
     <!-- topline_spending_summary is a list
       [0] contains name of summary
       [1] contains either the number of categories or number of items
       [2] contains list of lists containing summary rows with cell data
+     -->
         {% for list in topline_spending_summary %}
             {{ list[0] }}, including  {{ list[1] }} categories <a href="{{ url_for('spending_analysis') }}">(details)</a>
             {% include 'snippets/summary_table.html' %}
@@ -14,17 +15,17 @@
     <br>
     <details>
     <summary>categories to be looked at...</summary>
-    <details>
+    <details style="margin-left:40px">
     <summary>over spending tolerance by summary tag</summary>
         {% for i in examine_cat_by_summary_tag %}
-            <details><summary>{{ i[0] }}</summary>
+            <details style="margin-left:80px"><summary>{{ i[0] }}</summary>
             {% for j in i[1] %}
                 <a href="{{ url_for('category', cat=j) }}">{{ j }}</a><br>
             {% endfor %}
             </details>
         {% endfor %}
     </details>
-    <details><summary>categories over tolerance ordered by monthly spending</summary>
+    <details style="margin-left:40px"><summary>categories over tolerance ordered by monthly spending</summary>
        {% include 'snippets/metadata_from_list.html' %}
     </details>
     </details>
