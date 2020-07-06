@@ -14,18 +14,18 @@
         {% endfor %}
     <br>
     <details>
-    <summary>categories to be looked at...</summary>
-    <details style="margin-left:40px">
+    <summary class="tab">categories to be looked at...</summary>
+    <details>
     <summary>over spending tolerance by summary tag</summary>
         {% for i in examine_cat_by_summary_tag %}
-            <details style="margin-left:80px"><summary>{{ i[0] }}</summary>
+            <details><summary>{{ i[0] }}</summary>
             {% for j in i[1] %}
                 <a href="{{ url_for('category', cat=j) }}">{{ j }}</a><br>
             {% endfor %}
             </details>
         {% endfor %}
     </details>
-    <details style="margin-left:40px"><summary>categories over tolerance ordered by monthly spending</summary>
+    <details><summary>categories over any tolerance ordered by average monthly spend</summary>
        {% include 'snippets/metadata_from_list.html' %}
     </details>
     </details>
