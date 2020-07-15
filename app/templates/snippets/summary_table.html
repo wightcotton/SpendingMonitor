@@ -15,7 +15,7 @@
     </thead>
     {% for l in list[2]%}
         <tr>
-            <td>{{ l[0] }}</td>
+            <td><a href="{{ url_for('summary_tag_items', summary_tag=l[0]) }}">{{ l[0] }}</a></td>
             <td>{{ l[1] }}</td>
             <td>{{ l[2] }}</td>
             <td>{{ l[3] }}</td>

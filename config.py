@@ -10,3 +10,4 @@ class Config(object):
 
 class UserConfig(object):
     SUMMARY_TOLERANCE = 110
+    SUMMARY_TAGS = ['weekly', 'biweekly', 'monthly', 'quarterly', 'sporadic', 'rare']
