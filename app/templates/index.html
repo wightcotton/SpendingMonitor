@@ -13,11 +13,25 @@
             {% include 'snippets/summary_table.html' %}
         {% endfor %}
     <br>
+    <table border="1px solid black">
+        {% for i in last_year_cats_metadata_list %}
+            <tr>
+                <td><a href="{{ url_for('category', cat=i[0]) }}">{{ i[0] }}</a></td>
+                {% for j in i[1:] %}
+                <td>{% if j is float %}
+                    {{ '{:,.2f}'.format(j) }}
+                    {% else %}
+                    {{ j }}
+                {% endif %}</td>
+                {% endfor %}
+            </tr>
+        {% endfor %}
+    </table>
     <details>
     <summary class="tab">categories to be looked at...</summary>
     <details>
-    <summary>over spending tolerance by summary tag</summary>
-        {% for i in examine_cat_by_summary_tag %}
+    <summary>over spending tolerance in...</summary>
+        {% for i in overspent_cat_by_summary_tag %}
             <details><summary>{{ i[0] }}</summary>
             {% for j in i[1] %}
                 <a href="{{ url_for('category', cat=j) }}">{{ j }}</a><br>

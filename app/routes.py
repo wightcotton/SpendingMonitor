@@ -108,7 +108,8 @@ def index():
     file_info = info_requester.get_file_details()
     if not file_info:
         return redirect(url_for('upload_file'))  # someday need to abstract this
-    examine_categories = info_requester.get_cat_examine_list()
+    last_year_cats_to_look_at = info_requester.get_overspent_categories_for(summary_tag='last year')
+    last_year_cats_metadata_list = info_requester.get_category_metadata_list(categories=last_year_cats_to_look_at)
     return render_template('index.html',
                            file_info=[file_info[0], file_info[1]],
                            title='Home',
@@ -116,10 +117,10 @@ def index():
                            annual_budget=info_requester.get_budget_for(category_type='expense') * 12,
                            columns=info_requester.get_columns_for_spending_summary(),
                            topline_spending_summary=info_requester.get_top_line_spending_info(),
-                           examine_cat_by_summary_tag=info_requester.get_examine_list_by_summary_tag(),
-                           freq_examine_list=info_requester.get_freq_examine_list(),
+                           overspent_cat_by_summary_tag=info_requester.get_overspent_categories_by_summary_tag(),
                            metadata_headings=info_requester.get_category_metadata_headings(),
-                           metadata_list=info_requester.get_category_metadata_as_list(categories=examine_categories),
+                           last_year_cats_metadata_list=last_year_cats_metadata_list,
+                           # metadata_list=info_requester.get_category_metadata_as_list(categories=examine_categories),
                            categories_by_state=info_requester.get_categories_by_current_state())
 
 
@@ -201,6 +202,19 @@ def state_admin():
                            form=form,
                            file_info=file_info,
                            categories_by_state=info_requester.get_categories_by_current_state())
+
+
+@app.route('/summary_tag_items/<summary_tag>', methods=['GET', 'POST'])
+@login_required
+def summary_tag_items(summary_tag):
+    info_requester = InfoRequestHandler(current_user.id)
+    file_info = info_requester.get_file_details()
+    if not file_info:
+        return redirect(url_for('upload_file'))  # someday need to abstract this
+    return render_template('summary_tag_items.html',
+                           title=summary_tag,
+                           file_info=file_info,
+                           items=info_requester.get_items_for(summary_tag=summary_tag))
 
 
 @app.route('/upload_file', methods=['GET', 'POST'])
