@@ -13,6 +13,23 @@ from app.database_access.category_state_access import CategoryStateAccess
 class DataFrameActor(object):
     #
     def __init__(self, df):
+
+        def det_last_12_months(row):
+            return ((row['Month_as_dec'] < date.today().month) & (row["Year"] == str(date.today().year))) | \
+                   ((row["Year"] == str(date.today().year - 1)) & (row['Month_as_dec'] >= date.today().month))
+
+        def det_last_qtr(row):
+            return (row['Year'] == str(temp_yr)) & (row["Qtr"] == temp_qtr)
+
+        def det_this_qtr(row):
+            return (row['Year'] == str(date.today().year)) & (row["Qtr"] == current_qtr)
+
+        def det_last_month(row):
+            return (row['Year'] == str(temp_yr)) & (row["Month_as_dec"] == temp_month)
+
+        def det_this_month(row):
+            return (row['Year'] == str(date.today().year)) & (row["Month_as_dec"] == date.today().month)
+
         self.df = df
         self.df['Date'] = pd.to_datetime(self.df['Date'])
         self.df['Year'] = self.df['Date'].map(lambda d: d.strftime('%Y'))
@@ -20,6 +37,17 @@ class DataFrameActor(object):
         self.df['Month'] = self.df["Date"].dt.strftime('%B')  # text month name
         self.df['MthYr'] = self.df['Month'] + self.df['Year'].astype(str)
         self.df['Month_as_dec'] = self.df['Date'].map(lambda m: int(m.strftime('%m')))  # as 2 digit int
+        current_qtr = math.ceil(date.today().month / 3.)
+        temp_yr = date.today().year - 1 if current_qtr == 1 else date.today().year
+        temp_qtr = 4 if current_qtr == 1 else current_qtr - 1
+        temp_month = 12 if date.today().month == 1 else date.today().month - 1
+        self.df['last year'] = self.df['Year'].map(lambda d:  d == str(date.today().year - 1))
+        self.df['last 12 months'] = self.df.apply(det_last_12_months, axis=1)
+        self.df['this year'] = self.df['Year'].map(lambda d: d == str(date.today().year))
+        self.df['last quarter'] = self.df.apply(det_last_qtr, axis=1)
+        self.df['this quarter'] = self.df.apply(det_this_qtr, axis=1)
+        self.df['last month'] = self.df.apply(det_last_month, axis=1)
+        self.df['this month'] = self.df.apply(det_this_month, axis=1)
         # orient amounts toward spending - what is spend is a positive number
         self.df["normalizer"] = [1 if x == 'debit' else -1 for x in self.df["Transaction Type"]]
         self.df['Amount'] = self.df['Amount'] * self.df['normalizer']
@@ -38,6 +66,23 @@ class DataFrameActor(object):
 
     def get_unique_categories(self):
         return self.df['Category'].unique()
+
+    def get_summary_tag_info(self, summary_tag, categories=None):
+        ret_amount = 0
+        ret_tran_count = 0
+        ret_category_count = 0
+        if categories:
+            for cat in categories:
+                items = self.df.loc[(self.df[summary_tag]) & (self.df['Category'] == cat)]['Amount'].count()
+                if items > 0:
+                    ret_amount += self.df.loc[(self.df[summary_tag]) & (self.df['Category'] == cat)]['Amount'].sum()
+                    ret_tran_count += items
+                    ret_category_count += 1
+        else:
+            ret_amount = self.df.loc[self.df[summary_tag]]['Amount'].sum()
+            ret_tran_count = self.df.loc[self.df[summary_tag]]['Amount'].count()
+            ret_category_count = len(self.df.loc[self.df[summary_tag]]['Category'].unique().tolist())
+        return [ret_amount, ret_tran_count, ret_category_count]
 
     # INFO REQUESTS
 
@@ -67,10 +112,6 @@ class DataFrameActor(object):
                 temp_qtr = 4 if current_qtr == 1 else current_qtr - 1
                 return temp_df.loc[((temp_df['Year'] == str(temp_yr)) & (temp_df["Qtr"] == temp_qtr)),
                                    self.get_detail_item_display_columns()]
-
-    def get_columns_for_spending_summary(self):
-        # columns for constructed spending summaries - list of lists...
-        return ['Period', 'Count', 'Amount', 'of ave spend']
 
     def get_recent_items_for(self, category_list):
         # recent is this month and last month

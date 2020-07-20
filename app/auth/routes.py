@@ -1,8 +1,8 @@
-from flask import render_template, flash, redirect, url_for, request, session
+from flask import render_template, flash, redirect, url_for, request
 from app import app, db
 from app.auth.forms import LoginForm, RegistrationForm
-from flask_login import current_user, login_user, logout_user, login_required
-from app.models import User, UploadedFile
+from flask_login import current_user, login_user, logout_user
+from app.models import User
 from werkzeug.urls import url_parse
 
 

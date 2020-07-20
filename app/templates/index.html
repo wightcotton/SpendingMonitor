@@ -7,41 +7,49 @@
       [0] contains name of summary
       [1] contains either the number of categories or number of items
       [2] contains list of lists containing summary rows with cell data
+                (first row is column headings)
      -->
         {% for list in topline_spending_summary %}
-            {{ list[0] }}, including  {{ list[1] }} categories <a href="{{ url_for('spending_analysis') }}">(details)</a>
+            {{ list[0] }} <a href="{{ url_for('spending_analysis') }}">(details)</a>
             {% include 'snippets/summary_table.html' %}
         {% endfor %}
     <br>
-    <table border="1px solid black">
-        {% for i in last_year_cats_metadata_list %}
-            <tr>
-                <td><a href="{{ url_for('category', cat=i[0]) }}">{{ i[0] }}</a></td>
-                {% for j in i[1:] %}
-                <td>{% if j is float %}
-                    {{ '{:,.2f}'.format(j) }}
-                    {% else %}
-                    {{ j }}
-                {% endif %}</td>
-                {% endfor %}
-            </tr>
-        {% endfor %}
-    </table>
+    <!-- overspent_cat_metadata_by_summary_tag is
+    [[summary_tag, [[category, other metadata item, other metadata item],
+                   [category, other metadata item, other metadata item],
+                   ...]],
+     [summary_tag, [[category, other metadata item, other metadata item],
+                   [category, other metadata item, other metadata item],
+                   ...]]
+     ...
+     ]
+     -->
     <details>
-    <summary class="tab">categories to be looked at...</summary>
-    <details>
-    <summary>over spending tolerance in...</summary>
-        {% for i in overspent_cat_by_summary_tag %}
+    <summary>over expected spending</summary>
+        {% for i in overspent_cat_metadata_by_summary_tag %}
             <details><summary>{{ i[0] }}</summary>
-            {% for j in i[1] %}
-                <a href="{{ url_for('category', cat=j) }}">{{ j }}</a><br>
+            <table border="1">
+                <thead>
+                <tr>
+                    {% for column_heading in i[1][0] %}
+                        <th>{{ column_heading }}</th>
+                    {% endfor %}
+                </tr>
+                </thead>
+            {% for j in i[1][1:] %}
+                <td><a href="{{ url_for('category', cat=j[0]) }}">{{ j[0] }}</a></td>
+                {% for k in j[1:] %}
+                    <td>{% if k is float %}
+                        {{ '{:,.2f}'.format(k) }}
+                    {% else %}
+                        {{ k }}
+                    {% endif %}</td>
+                {% endfor %}
+                </tr>
             {% endfor %}
+            </table>
             </details>
         {% endfor %}
-    </details>
-    <details><summary>categories over any tolerance ordered by average monthly spend</summary>
-       {% include 'snippets/metadata_from_list.html' %}
-    </details>
     </details>
     <br>
     <h3>Flagged categories</h3>

@@ -25,72 +25,59 @@ class InfoRequestHandler(object):
         self.file_actor = FileUpload(user_id)
         self.trans_actor = DataFrameActor(self.file_actor.get_df())
         self.cat_actor = CategoryDFActor(self.trans_actor)
+        self.cat_state_actor = CategoryStateAccess(user_id)
 
-        def get_summary_detail(name, detail_df, budget):
-            total_spending = detail_df['Amount'].sum()
-            percent_budget = total_spending / budget * 100
-            return [name, detail_df['Amount'].count(),
-                    '${:,.2f}'.format(total_spending),
-                    '{:,.2f}%'.format(percent_budget)]
+        def get_columns_for_spending_summary():
+            # column headings for constructed spending summaries in get_summary_detail - list of lists...
+            return ['Period', 'Categories', 'Count', 'Amount', 'vs expected']
+
+        def refine_budget(tag, monthly_budget):
+            if tag in ['last year', 'last 12 months', 'this year']:
+                budget = monthly_budget * 12
+            elif tag in ['last quarter', 'this quarter']:
+                budget = monthly_budget * 3
+            else:
+                budget = monthly_budget
+            return budget
+
+        def get_summary_detail(summary_tag, categories=None, budget=0):
+            tag_info = self.trans_actor.get_summary_tag_info(summary_tag=summary_tag, categories=categories)
+            spending = tag_info[0]
+            tran_count = tag_info[1]
+            cat_count = tag_info[2]
+            percent_budget = spending / budget * 100
+            return [summary_tag, cat_count, tran_count, '${:,.2f}'.format(spending), '{:,.2f}%'.format(percent_budget)]
 
         def get_top_line_summary(actor):
+            summary_list = [get_columns_for_spending_summary()]
             categories = self.cat_actor.get_categories(category_type='expense')
-            temp_df = actor.get_subset_df(category_list=categories)
-            return [['All Spending', len(temp_df['Category'].unique().tolist()),
-                     get_summary_info_for(temp_df, self.get_budget_for('expense'))]]
+            try:
+                categories.remove(self.cat_state_actor.get_categories_current_state_for('ignore'))
+            except ValueError:
+                pass  # there could be categories that existed before and were ignored that no longer show up
+            monthly_budget = self.get_budget_for(category_type='expense')
+            for tag in UserConfig.SUMMARY_TAGS:
+                budget = refine_budget(tag, monthly_budget)
+                summary_list.append(get_summary_detail(tag, categories=categories, budget=budget))
+            return [['All Spending', summary_list]]
 
-        def get_summary_info_for(temp_df, monthly_budget):
-            # return list of lists containing summary info for last year, last 12 months, this year, etc...
-            ret = []
-            # useful intermediate values
-            # ['all trans', 'for last year', 'this year', 'last qtr', 'this qtr', 'last month', 'this month']
-            #        ret.append(self.get_summary_detail('all trans', temp_df))
-            budget = monthly_budget * 12
-            ret.append(
-                get_summary_detail('last year', temp_df.loc[temp_df['Year'] == str(date.today().year - 1)],
-                                   budget))
-
-            ret.append(get_summary_detail('last 12 months', temp_df.loc[
-                ((temp_df['Month_as_dec'] < date.today().month) & (temp_df["Year"] == str(date.today().year)))
-                | ((temp_df["Year"] == str(date.today().year - 1)) & (
-                        temp_df['Month_as_dec'] >= date.today().month))],
-                                          budget))
-
-            ret.append(get_summary_detail('this year', temp_df.loc[temp_df["Year"] == str(date.today().year)],
-                                          budget))
-
-            budget = monthly_budget * 4
-            current_qtr = math.ceil(date.today().month / 3.)
-            temp_yr = date.today().year - 1 if current_qtr == 1 else date.today().year
-            temp_qtr = 4 if current_qtr == 1 else current_qtr - 1
-            ret.append(get_summary_detail('last quarter', temp_df.loc[
-                ((temp_df['Year'] == str(temp_yr)) & (temp_df["Qtr"] == temp_qtr))], budget))
-
-            ret.append(get_summary_detail('this quarter', temp_df.loc[
-                ((temp_df['Year'] == str(date.today().year)) & (temp_df["Qtr"] == current_qtr))], budget))
-            temp_yr = date.today().year - 1 if date.today().month == 1 else date.today().year
-            temp_month = 12 if date.today().month == 1 else date.today().month - 1
-
-            budget = monthly_budget
-            ret.append(get_summary_detail('last month', temp_df.loc[
-                ((temp_df['Year'] == str(temp_yr)) & (temp_df["Month_as_dec"] == temp_month))], budget))
-
-            ret.append(get_summary_detail('this month', temp_df.loc[
-                ((temp_df['Year'] == str(date.today().year)) & (temp_df["Month_as_dec"] == date.today().month))],
-                                          budget))
-            return ret
-
-        def get_frequencies_summary(actor):
+        def get_frequency_summaries(actor):
             ret_dict = {}
-            for freq in UserConfig.SUMMARY_TAGS:
+            for freq in self.cat_actor.get_frequencies():
                 categories = self.cat_actor.get_categories(category_type='expense', frequency=freq)
-                temp_df = actor.get_subset_df(category_list=categories)
+                try:
+                    categories.remove(self.cat_state_actor.get_categories_current_state_for('ignore'))
+                except ValueError:
+                    pass
+                summary_list = [get_columns_for_spending_summary()]
                 monthly_budget = self.get_budget_for(category_type='expense', frequency=freq)
-                ret_dict[freq] = [freq, len(temp_df['Category'].unique().tolist()),
-                                  get_summary_info_for(temp_df, monthly_budget)]
+                for tag in UserConfig.SUMMARY_TAGS:
+                    budget = refine_budget(tag, monthly_budget)
+                    summary_list.append(get_summary_detail(tag, categories=categories, budget=budget))
+                ret_dict[freq] = [freq, summary_list]
             return ret_dict
 
-        def get_categories_summary(actor):
+        def get_category_summaries(actor):
             # returns summary of spending by categories
             # return a list of lists: [['Total' ['last year', spending, budget, percent spent],
             #                                 ['last 12', spending, budget, percent spent],
@@ -98,17 +85,23 @@ class InfoRequestHandler(object):
             #                          ['Weekly' ['last year', spending, budget, percent spent]]]
             ret_dict = {}
             list_of_categories = self.cat_actor.get_categories(category_type='expense')
+            try:
+                list_of_categories.remove(self.cat_state_actor.get_categories_current_state_for('ignore'))
+            except ValueError:
+                pass
             for cat in list_of_categories:
-                temp_df = actor.get_subset_df(category_list=[cat])
+                summary_list = [get_columns_for_spending_summary()]
                 monthly_budget = self.get_budget_for(category=cat)
-                ret_dict[cat] = [cat, len(temp_df['Category'].unique().tolist()),
-                                 get_summary_info_for(temp_df, monthly_budget)]
+                for tag in UserConfig.SUMMARY_TAGS:
+                    budget = refine_budget(tag, monthly_budget)
+                    summary_list.append(get_summary_detail(tag, categories=[cat], budget=budget))
+                ret_dict[cat] = [cat, summary_list]
             return ret_dict
 
         self.summary_actor = SummaryActor(get_top_line_summary(self.trans_actor),
-                                          get_frequencies_summary(self.trans_actor),
-                                          get_categories_summary(self.trans_actor))
-        self.cat_state_actor = CategoryStateAccess(user_id)
+                                          get_frequency_summaries(self.trans_actor),
+                                          get_category_summaries(self.trans_actor))
+
 
         # calc for summary table
 
@@ -157,6 +150,9 @@ class InfoRequestHandler(object):
 
     # CATEGORY (requests against derived category data frame)
 
+    def is_category_included(self, category=None):
+        return self.cat_actor.is_category_included(category=category)
+
     def get_category_metadata_headings(self):
         return self.cat_actor.get_category_metadata_cols()
 
@@ -174,6 +170,8 @@ class InfoRequestHandler(object):
         return temp_df.to_dict(orient='index')
 
     def get_category_metadata_list(self, categories=None, columns=None, sort_by_cols=None, ascending=None):
+        if columns is None:
+            columns = UserConfig.META_DATA_COLUMNS
         temp_df = self.cat_actor.get_category_metadata_df(categories=categories, columns=columns,
                                                           sort_by_cols=sort_by_cols, ascending=ascending)
         temp_df.reset_index(inplace=True)
@@ -184,6 +182,9 @@ class InfoRequestHandler(object):
 
     def get_frequency(self, category):
         return self.cat_actor.get_frequency(category)
+
+    def get_categories(self, category_type=None, frequency=None):
+        return self.cat_actor.get_categories(category_type=category_type, frequency=frequency)
 
     def get_budget_for(self, category_type=None, frequency=None, category=None):
         return self.cat_actor.get_budget_for(category_type=category_type, frequency=frequency, category=category)
@@ -206,6 +207,13 @@ class InfoRequestHandler(object):
 
     def get_overspent_categories_by_summary_tag(self):
         return self.summary_actor.get_overspent_categories_by_summary_tag()
+
+    def get_overspent_cat_metadata_by_summary_tag(self):
+        ret_list = []
+        for i in self.get_overspent_categories_by_summary_tag():
+            ret_list.append([i[0], self.cat_actor.get_category_metadata_list(categories=i[1],
+                                                                             columns=UserConfig.META_DATA_COLUMNS)])
+        return ret_list
 
     def get_overspent_frequencies_for(self, summary_tag=None):
         for i in self.get_overspent_frequencies_by_summary_tag():
@@ -237,7 +245,7 @@ class InfoRequestHandler(object):
 
     def get_categories_by_current_state(self):
         ret_list = self.cat_state_actor.get_categories_by_current_state()
-        all_categories = self.cat_actor.get_categories('expense', frequency='all_spending')
+        all_categories = self.cat_actor.get_categories(category_type='expense', frequency='all_spending')
         for state_list in ret_list:
             for cat in state_list[1]:
                 if cat not in all_categories:
