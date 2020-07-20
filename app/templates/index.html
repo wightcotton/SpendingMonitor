@@ -24,33 +24,31 @@
      ...
      ]
      -->
-    <details>
-    <summary>over expected spending</summary>
-        {% for i in overspent_cat_metadata_by_summary_tag %}
-            <details><summary>{{ i[0] }}</summary>
-            <table border="1">
-                <thead>
-                <tr>
-                    {% for column_heading in i[1][0] %}
-                        <th>{{ column_heading }}</th>
-                    {% endfor %}
-                </tr>
-                </thead>
-            {% for j in i[1][1:] %}
-                <td><a href="{{ url_for('category', cat=j[0]) }}">{{ j[0] }}</a></td>
-                {% for k in j[1:] %}
-                    <td>{% if k is float %}
-                        {{ '{:,.2f}'.format(k) }}
-                    {% else %}
-                        {{ k }}
-                    {% endif %}</td>
+    Overspent categories by summary period
+    {% for i in overspent_cat_metadata_by_summary_tag %}
+        <details><summary>{{ i[0] }}</summary>
+        <table border="1">
+            <thead>
+            <tr>
+                {% for column_heading in i[1][0] %}
+                    <th>{{ column_heading }}</th>
                 {% endfor %}
-                </tr>
+            </tr>
+            </thead>
+        {% for j in i[1][1:] %}
+            <td><a href="{{ url_for('category', cat=j[0]) }}">{{ j[0] }}</a></td>
+            {% for k in j[1:] %}
+                <td>{% if k is float %}
+                    {{ '{:,.2f}'.format(k) }}
+                {% else %}
+                    {{ k }}
+                {% endif %}</td>
             {% endfor %}
-            </table>
-            </details>
+            </tr>
         {% endfor %}
-    </details>
+        </table>
+        </details>
+    {% endfor %}
     <br>
     <h3>Flagged categories</h3>
     {% for i in categories_by_state %}
