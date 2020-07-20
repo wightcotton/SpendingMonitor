@@ -51,10 +51,11 @@ class InfoRequestHandler(object):
         def get_top_line_summary(actor):
             summary_list = [get_columns_for_spending_summary()]
             categories = self.cat_actor.get_categories(category_type='expense')
-            try:
-                categories.remove(self.cat_state_actor.get_categories_current_state_for('ignore'))
-            except ValueError:
-                pass  # there could be categories that existed before and were ignored that no longer show up
+            for cat in self.cat_state_actor.get_categories_current_state_for('ignore'):
+                try:
+                    categories.remove(cat)
+                except ValueError:  # there could be categories not in data frame that are in database
+                    pass
             monthly_budget = self.get_budget_for(category_type='expense')
             for tag in UserConfig.SUMMARY_TAGS:
                 budget = refine_budget(tag, monthly_budget)
@@ -65,10 +66,11 @@ class InfoRequestHandler(object):
             ret_dict = {}
             for freq in self.cat_actor.get_frequencies():
                 categories = self.cat_actor.get_categories(category_type='expense', frequency=freq)
-                try:
-                    categories.remove(self.cat_state_actor.get_categories_current_state_for('ignore'))
-                except ValueError:
-                    pass
+                for cat in self.cat_state_actor.get_categories_current_state_for('ignore'):
+                    try:
+                        categories.remove(cat)
+                    except ValueError:  # there could be categories not in data frame that are in database
+                        pass
                 summary_list = [get_columns_for_spending_summary()]
                 monthly_budget = self.get_budget_for(category_type='expense', frequency=freq)
                 for tag in UserConfig.SUMMARY_TAGS:
@@ -84,12 +86,13 @@ class InfoRequestHandler(object):
             #                                           ...                               ],
             #                          ['Weekly' ['last year', spending, budget, percent spent]]]
             ret_dict = {}
-            list_of_categories = self.cat_actor.get_categories(category_type='expense')
-            try:
-                list_of_categories.remove(self.cat_state_actor.get_categories_current_state_for('ignore'))
-            except ValueError:
-                pass
-            for cat in list_of_categories:
+            categories = self.cat_actor.get_categories(category_type='expense')
+            for cat in self.cat_state_actor.get_categories_current_state_for('ignore'):
+                try:
+                    categories.remove(cat)
+                except ValueError:  # there could be categories not in data frame that are in database
+                    pass
+            for cat in categories:
                 summary_list = [get_columns_for_spending_summary()]
                 monthly_budget = self.get_budget_for(category=cat)
                 for tag in UserConfig.SUMMARY_TAGS:
