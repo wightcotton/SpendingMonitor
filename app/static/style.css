@@ -7,3 +7,7 @@ details {
 }
 
 .tab1 { margin-left: 10px; }
+
+.error {
+    background-color: yellow;
+}

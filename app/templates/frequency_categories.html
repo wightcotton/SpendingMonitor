@@ -2,5 +2,25 @@
 
 {% block content %}
     <h3>spending summary for {{ frequency }} categories</h3>
-    {% include 'snippets/metadata.html' %}
+    <table border="1">
+        <thead>
+        <tr>
+            {% for column_heading in metadata[0] %}
+                <th>{{ column_heading }}</th>
+            {% endfor %}
+        </tr>
+        </thead>
+    {% for i in metadata[1:] %}
+        <tr>
+        <td><a href="{{ url_for('category', cat=i[0]) }}">{{ i[0] }}</a></td>
+        {% for j in i[1:] %}
+            <td>{% if j is float %}
+                {{ '{:,.2f}'.format(j) }}
+            {% else %}
+                {{ j }}
+            {% endif %}</td>
+        {% endfor %}
+        </tr>
+    {% endfor %}
+    </table>
 {% endblock %}

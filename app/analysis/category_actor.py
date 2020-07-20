@@ -35,10 +35,39 @@ class CategoryDFActor(object):
     def __init__(self, df_actor):
         # category data frame is derived from data frame containing all the transactions
         temp_category_group_obj = df_actor.df.groupby(['Category'])['Amount']
+
+        # helper methods in creating category df
+        def det_cat(row):
+            # return 'investment' if row['large_percent'] > .4 else 'expense' if row['debit_percent'] > .6 else 'income'
+            return 'expense' if row['debit_percent'] > .51 else 'income'
+
+        def get_state(row):
+            return CategoryStateAccess(current_user.id).get_current_state(row['Category'])
+
+        def calc_freq_index(row):
+            return row['cat freq']
+
+        def det_freq_cat(row):
+            if row['count'] < 5:
+                return 'rare'
+            elif row['frequency_index'] < 8:
+                return 'weekly'
+            elif row['frequency_index'] < 16:
+                return 'biweekly'
+            elif row['frequency_index'] < 35:
+                return 'monthly'
+            elif row['frequency_index'] < 100:
+                return 'quarterly'
+            else:
+                return 'sporadic'
+        # end helper methods
+
         cat_item_count = temp_category_group_obj.count()
         cat_first_item_date = df_actor.df.groupby(['Category'])['Date'].min()
         cat_last_item_date = df_actor.df.groupby(['Category'])['Date'].max()
         cat_item_timespan = (cat_last_item_date - cat_first_item_date).dt.days + 1  # for where only one expense
+        cat_first_item_date = cat_first_item_date.dt.strftime('%m/%d/%Y')
+        cat_last_item_date = cat_last_item_date.dt.strftime('%m/%d/%Y')
         cat_item_ave_diff = df_actor.df.groupby(['Category'])['Time_between_items'].mean()
         cat_frequency = cat_item_timespan / cat_item_count  # items per day
         cat_total_spend = temp_category_group_obj.sum()
@@ -60,81 +89,42 @@ class CategoryDFActor(object):
             axis=1, inplace=True)
         self.cat_df['Category'] = self.cat_df.index
         self.number_of_months = len(df_actor.df['MthYr'].unique())
-        self.cat_df['ave_mnthly_spend'] = self.cat_df['total spend'].map(lambda s: s / self.number_of_months)
+        self.cat_df['monthly_spend'] = self.cat_df['total spend'].map(lambda s: s / self.number_of_months)
         self.cat_df['large_percent'] = self.cat_df['large'] / self.cat_df['count']
         self.cat_df['debit_percent'] = self.cat_df['debit'] / self.cat_df['count']
         # create false mutual exclusivity among the three cat types - check for investment first to eliminate
         # those from spending
-        self.cat_df['category_type'] = self.cat_df.apply(self.det_cat, axis=1)
-        self.cat_df['frequency_index'] = self.cat_df.apply(self.calc_freq_index, axis=1)
-        self.cat_df['frequency'] = self.cat_df.apply(self.det_freq_cat, axis=1)
-        self.cat_df['state'] = self.cat_df.apply(self.get_state, axis=1)
+        self.cat_df['category_type'] = self.cat_df.apply(det_cat, axis=1)
+        self.cat_df['frequency_index'] = self.cat_df.apply(calc_freq_index, axis=1)
+        self.cat_df['frequency'] = self.cat_df.apply(det_freq_cat, axis=1)
+        self.cat_df['state'] = self.cat_df.apply(get_state, axis=1)
         self.cat_df.replace([np.inf, -np.inf, np.nan], 1)
         self.cat_df['cluster'] = self.do_clustering()
         self.temp_type_freq_group = self.cat_df.groupby(['category_type', 'frequency'])
 
-    # helper methods in creating category df
-
-    @staticmethod
-    def det_cat(row):
-        # return 'investment' if row['large_percent'] > .4 else 'expense' if row['debit_percent'] > .6 else 'income'
-        return 'expense' if row['debit_percent'] > .51 else 'income'
-
-    @staticmethod
-    def get_state(row):
-        return CategoryStateAccess(current_user.id).get_current_state(row['Category'])
-
-    @staticmethod
-    def get_category_types():
-        return ['expense', 'income']
-
-    @staticmethod
-    def calc_freq_index(row):
-        return row['cat freq']
-
-    @staticmethod
-    def det_freq_cat(row):
-        if row['count'] < 5:
-            return 'rare'
-        elif row['frequency_index'] < 8:
-            return 'weekly'
-        elif row['frequency_index'] < 16:
-            return 'biweekly'
-        elif row['frequency_index'] < 35:
-            return 'monthly'
-        elif row['frequency_index'] < 100:
-            return 'quarterly'
-        else:
-            return 'sporadic'
-
-    # end helper methods
-
     # PUBLIC INTERFACE METHODS
 
-    @staticmethod
-    def get_category_metadata_cols():
-        return ['frequency', 'state', 'ave_mnthly_spend', 'last date', 'timespan', 'ave diff',
-                'large_percent',
-                'frequency_index']
+    def is_category_included(self, category=None):
+        return category in self.cat_df.index.tolist()
 
     def get_category_metadata_df(self, categories=None, columns=None, sort_by_cols=None, ascending=None):
+        if sort_by_cols is None:
+            sort_by_cols = 'monthly_spend'
+            ascending = False
         if categories and columns:
-            return self.cat_df.loc[categories, columns].sort_values(sort_by_cols, axis=1, ascending=ascending)
+            return self.cat_df.loc[categories, columns].sort_values(by=sort_by_cols, ascending=ascending)
         elif categories:
-            return self.cat_df.loc[categories].sort_values(sort_by_cols, axis=1, ascending=ascending)
+            return self.cat_df.loc[categories].sort_values(by=sort_by_cols, ascending=ascending)
         elif columns:
-            return self.cat_df.loc[:, columns].sort_values(sort_by_cols, axis=1, ascending=ascending)
+            return self.cat_df.loc[:, columns].sort_values(by=sort_by_cols, ascending=ascending)
         else:
-            return self.cat_df.sort_values(sort_by_cols, axis=1, ascending=ascending)
+            return self.cat_df.sort_values(by=sort_by_cols, ascending=ascending)
 
     def get_category_metadata_list(self, categories=None, columns=None):
-        temp_df = self.cat_actor.get_category_metadata_df(categories=categories, columns=columns)
+        temp_df = self.get_category_metadata_df(categories=categories, columns=columns)
         temp_df.reset_index(inplace=True)
         temp_df = temp_df.rename(columns={'index': 'category'})
-        temp_df.sort_values(by=['ave_mnthly_spend'], ascending=False, inplace=True)
-        return_list = temp_df.values.tolist()
-        return_list.insert(0, temp_df.columns.values.tolist())
-        return return_list
+        return [temp_df.columns.values.tolist()] + temp_df.values.tolist()
 
     def get_frequency(self, category):
         return self.cat_df.loc[category]['frequency']
@@ -144,13 +134,12 @@ class CategoryDFActor(object):
 
     # end INFO REQUESTS
 
-    def get_spending_category_frequencies(self):
-        return ['weekly', 'biweekly', 'monthly', 'quarterly', 'sporadic', 'rare']
-
-    def get_categories(self, category_type, frequency=None):
-        if frequency is None:
+    def get_categories(self, category_type=None, frequency=None):
+        if category_type is None and frequency is None:
+            return self.cat_df.index.tolist()
+        elif frequency is None:
             return self.cat_df.loc[(self.cat_df['category_type'] == category_type)].index.tolist()
-        elif frequency == 'all_spending':  # get all categories for that type
+        elif category_type is None:
             return self.cat_df.loc[(self.cat_df['category_type'] == category_type)].index.tolist()
         else:
             # need to include check to see if frequency in spending categories list
@@ -174,20 +163,14 @@ class CategoryDFActor(object):
 
     def get_budget_for(self, category_type=None, frequency=None, category=None):
         if category:
-            return self.cat_df.loc[category]['ave_mnthly_spend']
+            return self.cat_df.loc[category]['monthly_spend']
         elif category_type and frequency:
             return self.cat_df.loc[(self.cat_df['category_type'] == category_type) &
                                    (self.cat_df['frequency'] == frequency) &
-                                   (self.cat_df['state'] != 'ignore')].sum()['ave_mnthly_spend']
+                                   (self.cat_df['state'] != 'ignore')].sum()['monthly_spend']
         elif category_type:
             return self.cat_df.loc[(self.cat_df['category_type'] == category_type) &
-                                   (self.cat_df['state'] != 'ignore')].sum()['ave_mnthly_spend']
-
-
-
-
-
-
+                                   (self.cat_df['state'] != 'ignore')].sum()['monthly_spend']
 
     def do_clustering(self):
         return True

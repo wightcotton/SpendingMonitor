@@ -46,8 +46,8 @@ class SummaryActor(object):
             # returns list of keys exceeding spending by some summary tag
             ret_list = []
             for k, v in focus_dict.items():
-                for i in v[2]:
-                    if get_percent_as_float(i[3]) > UserConfig.SUMMARY_TOLERANCE:
+                for i in v[1][1:]:  # avoiding trying to convert heading to float
+                    if get_percent_as_float(i[4]) > UserConfig.SUMMARY_TOLERANCE:
                         add_new_tag = True
                         for r in ret_list:
                             if i[0] == r[0]:

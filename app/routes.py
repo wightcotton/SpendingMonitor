@@ -1,4 +1,4 @@
-from flask import render_template, redirect, url_for, request, session
+from flask import render_template, redirect, url_for, request, session, flash
 from app import app
 from config import Config
 from app.forms import UploadForm, HomeForm, FileAdminForm, CategorySummaryForm, StateAdminForm
@@ -23,7 +23,7 @@ def categories():
                            file_info=[file_info[0], file_info[1]],
                            title='Categories',
                            today=date.today(),
-                           items=info_requester.get_category_info(['category_type', 'frequency_index']))
+                           metadata=info_requester.get_category_metadata_list())
 
 
 @app.route('/category/<cat>', methods=['GET', 'POST'])
@@ -34,6 +34,9 @@ def category(cat):
     file_info = info_requester.get_file_details()
     if not file_info:
         return redirect(url_for('upload_file'))  # someday need to abstract this
+    if not info_requester.is_category_included(category=cat):
+        flash('category is no longer in the dataset')
+        return redirect(request.referrer)
     # few categories will have existing state
     if request.method == 'POST':
         if form.change_state.data:
@@ -52,10 +55,8 @@ def category(cat):
                            title=cat + ' summary',
                            today=date.today(),
                            frequency=info_requester.get_frequency(cat),
-                           columns=info_requester.get_columns_for_spending_summary(),
                            spending_summary_info=info_requester.get_cat_summary_spending_info(list_of_categories=[cat]),
-                           metadata_headings=info_requester.get_category_metadata_headings(),
-                           metadata=info_requester.get_category_metadata(categories=[cat]),
+                           metadata=info_requester.get_category_metadata_list(categories=[cat]),
                            items=info_requester.get_items_for(category=cat))
 
 
@@ -90,11 +91,11 @@ def frequency_categories(frequency):
     #    form = Form()
     info_requester = InfoRequestHandler(current_user.id)
     file_info = info_requester.get_file_details()
+    categories_for_frequency = info_requester.get_categories(category_type='expense', frequency=frequency)
     return render_template('frequency_categories.html', title='summary of categories for ' + frequency,
                            file_info=[file_info[0], file_info[1]],
                            frequency=frequency,
-                           metadata_headings=info_requester.get_category_metadata_headings(),
-                           metadata=info_requester.get_category_metadata(frequency=frequency))
+                           metadata=info_requester.get_category_metadata_list(categories=categories_for_frequency))
 
 
 @app.route('/', methods=['GET', 'POST'])
@@ -108,19 +109,14 @@ def index():
     file_info = info_requester.get_file_details()
     if not file_info:
         return redirect(url_for('upload_file'))  # someday need to abstract this
-    last_year_cats_to_look_at = info_requester.get_overspent_categories_for(summary_tag='last year')
-    last_year_cats_metadata_list = info_requester.get_category_metadata_list(categories=last_year_cats_to_look_at)
     return render_template('index.html',
                            file_info=[file_info[0], file_info[1]],
                            title='Home',
                            today=date.today(),
                            annual_budget=info_requester.get_budget_for(category_type='expense') * 12,
-                           columns=info_requester.get_columns_for_spending_summary(),
                            topline_spending_summary=info_requester.get_top_line_spending_info(),
-                           overspent_cat_by_summary_tag=info_requester.get_overspent_categories_by_summary_tag(),
-                           metadata_headings=info_requester.get_category_metadata_headings(),
-                           last_year_cats_metadata_list=last_year_cats_metadata_list,
-                           # metadata_list=info_requester.get_category_metadata_as_list(categories=examine_categories),
+                           overspent_cat_metadata_by_summary_tag=
+                           info_requester.get_overspent_cat_metadata_by_summary_tag(),
                            categories_by_state=info_requester.get_categories_by_current_state())
 
 
@@ -178,7 +174,6 @@ def spending_analysis():
                            title='Home',
                            today=date.today(),
                            annual_budget=info_requester.get_budget_for(category_type='expense') * 12,
-                           columns=info_requester.get_columns_for_spending_summary(),
                            spending_summary_info=info_requester.get_freq_summary_spending_info())
 
 

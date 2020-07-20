@@ -8,17 +8,18 @@
 <table border="1">
     <thead>
         <tr>
-        {% for c in columns %}
+        {% for c in list[1][0] %}
             <th>{{ c }}</th>
         {% endfor %}
         </tr>
     </thead>
-    {% for l in list[2]%}
+    {% for l in list[1][1:] %}
         <tr>
             <td><a href="{{ url_for('summary_tag_items', summary_tag=l[0]) }}">{{ l[0] }}</a></td>
             <td>{{ l[1] }}</td>
             <td>{{ l[2] }}</td>
             <td>{{ l[3] }}</td>
+            <td>{{ l[4] }}</td>
         </tr>
     {% endfor %}
 </table>
