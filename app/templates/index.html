@@ -2,16 +2,15 @@
 
 {% block content %}
     <h4>annualized spending: {{ '${:,.2f}'.format(annual_budget) }}</h4>
-    Topline Spending Summary<br>
-    <!-- topline_spending_summary is a list
-      [0] contains name of summary
-      [1] contains either the number of categories or number of items
-      [2] contains list of lists containing summary rows with cell data
-                (first row is column headings)
+    Overall Spending Summary<br>
+    <!-- spending_summary is a list (shared across other pages that display the summary table
+      [0] contains name of summary ('total spending', a frequency or a category)
+      [1] contains list of lists containing summary rows with cell data
+                (first row is column headings, following rows for each summary tag)
      -->
         {% for list in topline_spending_summary %}
             {{ list[0] }} <a href="{{ url_for('spending_analysis') }}">(details)</a>
-            {% include 'snippets/summary_table.html' %}
+            {% include 'snippets/summary_table.html' %}  <!-- references list[1] -->
         {% endfor %}
     <br>
     <!-- overspent_cat_metadata_by_summary_tag is

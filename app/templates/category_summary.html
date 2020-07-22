@@ -2,14 +2,14 @@
 
 {% block content %}
     Spending Summary as of {{ today }}<br>
-    {% for list in spending_summary_info %}
-        <h3>{{ list[0] }} ({{ frequency }}) </h3>
+        <h3>{{ category }} ({{ frequency }}) </h3>
         <form action="" method="post">
             {{ form.hidden_tag() }}
             {{ form.state_radio_button }}<br>
             {{ form.change_state }}
         </form>
         <h3>Summary</h3>
+    {% for list in spending_summary_info %}
         {% include 'snippets/summary_table.html' %}
     {% endfor %}
     <h3>metadata</h3>
@@ -23,7 +23,7 @@
         </thead>
     {% for i in metadata[1:] %}
         <tr>
-        <td><a href="{{ url_for('category', cat=i[0]) }}">{{ i[0] }}</a></td>
+        <td>{{ i[0] }}</td>
         {% for j in i[1:] %}
             <td>{% if j is float %}
                 {{ '{:,.2f}'.format(j) }}

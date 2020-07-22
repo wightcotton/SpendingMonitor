@@ -54,6 +54,7 @@ def category(cat):
                            file_info=[file_info[0], file_info[1]],
                            title=cat + ' summary',
                            today=date.today(),
+                           category=cat,
                            frequency=info_requester.get_frequency(cat),
                            spending_summary_info=info_requester.get_cat_summary_spending_info(list_of_categories=[cat]),
                            metadata=info_requester.get_category_metadata_list(categories=[cat]),
@@ -210,6 +211,18 @@ def summary_tag_items(summary_tag):
                            title=summary_tag,
                            file_info=file_info,
                            items=info_requester.get_items_for(summary_tag=summary_tag))
+
+
+@app.route('/summary_tag_categories/<summary_tag>', methods=['GET'])
+@login_required
+def summary_tag_categories(summary_tag):
+    info_requester = InfoRequestHandler(current_user.id)
+    file_info = info_requester.get_file_details()
+    categories_for_summary_tag = info_requester.get_categories(summary_tag=summary_tag)
+    return render_template('summary_tag_categories.html', title='summary of categories for ' + summary_tag,
+                           file_info=[file_info[0], file_info[1]],
+                           summary_tag=summary_tag,
+                           metadata=info_requester.get_category_metadata_list(categories=categories_for_summary_tag))
 
 
 @app.route('/upload_file', methods=['GET', 'POST'])

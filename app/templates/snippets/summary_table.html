@@ -2,8 +2,8 @@
      and that a list of columns has been provided
 
      requires:
-       columns to be list of headings
-       list containing a list at position 3 that contains values to be displayed in table
+       list with columns in the first row
+       and the summary tag values in subsequent rows
 -->
 <table border="1">
     <thead>
@@ -15,9 +15,9 @@
     </thead>
     {% for l in list[1][1:] %}
         <tr>
-            <td><a href="{{ url_for('summary_tag_items', summary_tag=l[0]) }}">{{ l[0] }}</a></td>
-            <td>{{ l[1] }}</td>
-            <td>{{ l[2] }}</td>
+            <td>{{ l[0] }}</td>
+            <td><a href="{{ url_for('summary_tag_categories', summary_tag=l[0]) }}">{{ l[1] }}</a></td>
+            <td><a href="{{ url_for('summary_tag_items', summary_tag=l[0]) }}">{{ l[2] }}</a></td>
             <td>{{ l[3] }}</td>
             <td>{{ l[4] }}</td>
         </tr>
