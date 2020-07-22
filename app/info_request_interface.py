@@ -186,8 +186,11 @@ class InfoRequestHandler(object):
     def get_frequency(self, category):
         return self.cat_actor.get_frequency(category)
 
-    def get_categories(self, category_type=None, frequency=None):
-        return self.cat_actor.get_categories(category_type=category_type, frequency=frequency)
+    def get_categories(self, category_type=None, frequency=None, summary_tag=None):
+        if frequency:
+            return self.cat_actor.get_categories(category_type=category_type, frequency=frequency)
+        elif summary_tag:
+            return self.trans_actor.get_categories_for(summary_tag=summary_tag).tolist()
 
     def get_budget_for(self, category_type=None, frequency=None, category=None):
         return self.cat_actor.get_budget_for(category_type=category_type, frequency=frequency, category=category)

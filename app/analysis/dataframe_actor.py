@@ -67,6 +67,9 @@ class DataFrameActor(object):
     def get_unique_categories(self):
         return self.df['Category'].unique()
 
+    def get_categories_for(self, summary_tag=None):
+        return self.df.loc[self.df[summary_tag]]['Category'].unique()
+
     def get_summary_tag_info(self, summary_tag, categories=None):
         ret_amount = 0
         ret_tran_count = 0
@@ -92,26 +95,8 @@ class DataFrameActor(object):
             return self.get_subset_df(category_list=[category], override_ignore=True)[
                 self.get_detail_item_display_columns()]
         elif summary_tag:
-            temp_df = self.get_subset_df()
-            if summary_tag == 'this month':
-                return temp_df.loc[((temp_df["Year"] == date.today().year) &
-                                    (temp_df["Month_as_dec"] == date.today().month)),
-                                   self.get_detail_item_display_columns()]
-            elif summary_tag == 'last month':
-                prev_month = DataFrameActor.get_prev_month_and_year()[0]
-                prev_year = DataFrameActor.get_prev_month_and_year()[1]
-                return temp_df.loc[((temp_df["Year"] == prev_year) & (temp_df["Month_as_dec"] == prev_month)),
-                                   self.get_detail_item_display_columns()]
-            elif summary_tag == 'this quarter':
-                current_qtr = math.ceil(date.today().month / 3.)
-                return temp_df.loc[((temp_df['Year'] == str(date.today().year)) & (temp_df["Qtr"] == current_qtr)),
-                                   self.get_detail_item_display_columns()]
-            elif summary_tag == 'last quarter':
-                current_qtr = math.ceil(date.today().month / 3.)
-                temp_yr = date.today().year - 1 if current_qtr == 1 else date.today().year
-                temp_qtr = 4 if current_qtr == 1 else current_qtr - 1
-                return temp_df.loc[((temp_df['Year'] == str(temp_yr)) & (temp_df["Qtr"] == temp_qtr)),
-                                   self.get_detail_item_display_columns()]
+            return self.df.loc[self.df[summary_tag], self.get_detail_item_display_columns()]
+
 
     def get_recent_items_for(self, category_list):
         # recent is this month and last month
