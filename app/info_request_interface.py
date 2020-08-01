@@ -23,87 +23,88 @@ class InfoRequestHandler(object):
 
     def __init__(self, user_id):
         self.file_actor = FileUpload(user_id)
-        self.trans_actor = DataFrameActor(self.file_actor.get_df())
-        self.cat_actor = CategoryDFActor(self.trans_actor)
-        self.cat_state_actor = CategoryStateAccess(user_id)
+        if self.file_actor.get_details() is not None:
+            self.trans_actor = DataFrameActor(self.file_actor.get_df())
+            self.cat_actor = CategoryDFActor(self.trans_actor)
+            self.cat_state_actor = CategoryStateAccess(user_id)
 
-        def get_columns_for_spending_summary():
-            # column headings for constructed spending summaries in get_summary_detail - list of lists...
-            return ['Period', 'Categories', 'Count', 'Amount', 'vs expected']
+            def get_columns_for_spending_summary():
+                # column headings for constructed spending summaries in get_summary_detail - list of lists...
+                return ['Period', 'Categories', 'Count', 'Amount', 'vs expected']
 
-        def refine_budget(tag, monthly_budget):
-            if tag in ['last year', 'last 12 months', 'this year']:
-                budget = monthly_budget * 12
-            elif tag in ['last quarter', 'this quarter']:
-                budget = monthly_budget * 3
-            else:
-                budget = monthly_budget
-            return budget
+            def refine_budget(tag, monthly_budget):
+                if tag in ['last year', 'last 12 months', 'this year']:
+                    budget = monthly_budget * 12
+                elif tag in ['last quarter', 'this quarter']:
+                    budget = monthly_budget * 3
+                else:
+                    budget = monthly_budget
+                return budget
 
-        def get_summary_detail(summary_tag, categories=None, budget=0):
-            tag_info = self.trans_actor.get_summary_tag_info(summary_tag=summary_tag, categories=categories)
-            spending = tag_info[0]
-            tran_count = tag_info[1]
-            cat_count = tag_info[2]
-            percent_budget = spending / budget * 100
-            return [summary_tag, cat_count, tran_count, '${:,.2f}'.format(spending), '{:,.2f}%'.format(percent_budget)]
+            def get_summary_detail(summary_tag, categories=None, budget=0):
+                tag_info = self.trans_actor.get_summary_tag_info(summary_tag=summary_tag, categories=categories)
+                spending = tag_info[0]
+                tran_count = tag_info[1]
+                cat_count = tag_info[2]
+                percent_budget = spending / budget * 100
+                return [summary_tag, cat_count, tran_count, '${:,.2f}'.format(spending), '{:,.2f}%'.format(percent_budget)]
 
-        def get_top_line_summary(actor):
-            summary_list = [get_columns_for_spending_summary()]
-            categories = self.cat_actor.get_categories(category_type='expense')
-            for cat in self.cat_state_actor.get_categories_current_state_for('ignore'):
-                try:
-                    categories.remove(cat)
-                except ValueError:  # there could be categories not in data frame that are in database
-                    pass
-            monthly_budget = self.get_budget_for(category_type='expense')
-            for tag in UserConfig.SUMMARY_TAGS:
-                budget = refine_budget(tag, monthly_budget)
-                summary_list.append(get_summary_detail(tag, categories=categories, budget=budget))
-            return [['All Spending', summary_list]]
-
-        def get_frequency_summaries(actor):
-            ret_dict = {}
-            for freq in self.cat_actor.get_frequencies():
-                categories = self.cat_actor.get_categories(category_type='expense', frequency=freq)
+            def get_top_line_summary(actor):
+                summary_list = [get_columns_for_spending_summary()]
+                categories = self.cat_actor.get_categories(category_type='expense')
                 for cat in self.cat_state_actor.get_categories_current_state_for('ignore'):
                     try:
                         categories.remove(cat)
                     except ValueError:  # there could be categories not in data frame that are in database
                         pass
-                summary_list = [get_columns_for_spending_summary()]
-                monthly_budget = self.get_budget_for(category_type='expense', frequency=freq)
+                monthly_budget = self.get_budget_for(category_type='expense')
                 for tag in UserConfig.SUMMARY_TAGS:
                     budget = refine_budget(tag, monthly_budget)
                     summary_list.append(get_summary_detail(tag, categories=categories, budget=budget))
-                ret_dict[freq] = [freq, summary_list]
-            return ret_dict
+                return [['All Spending', summary_list]]
 
-        def get_category_summaries(actor):
-            # returns summary of spending by categories
-            # return a list of lists: [['Total' ['last year', spending, budget, percent spent],
-            #                                 ['last 12', spending, budget, percent spent],
-            #                                           ...                               ],
-            #                          ['Weekly' ['last year', spending, budget, percent spent]]]
-            ret_dict = {}
-            categories = self.cat_actor.get_categories(category_type='expense')
-            for cat in self.cat_state_actor.get_categories_current_state_for('ignore'):
-                try:
-                    categories.remove(cat)
-                except ValueError:  # there could be categories not in data frame that are in database
-                    pass
-            for cat in categories:
-                summary_list = [get_columns_for_spending_summary()]
-                monthly_budget = self.get_budget_for(category=cat)
-                for tag in UserConfig.SUMMARY_TAGS:
-                    budget = refine_budget(tag, monthly_budget)
-                    summary_list.append(get_summary_detail(tag, categories=[cat], budget=budget))
-                ret_dict[cat] = [cat, summary_list]
-            return ret_dict
+            def get_frequency_summaries(actor):
+                ret_dict = {}
+                for freq in self.cat_actor.get_frequencies():
+                    categories = self.cat_actor.get_categories(category_type='expense', frequency=freq)
+                    for cat in self.cat_state_actor.get_categories_current_state_for('ignore'):
+                        try:
+                            categories.remove(cat)
+                        except ValueError:  # there could be categories not in data frame that are in database
+                            pass
+                    summary_list = [get_columns_for_spending_summary()]
+                    monthly_budget = self.get_budget_for(category_type='expense', frequency=freq)
+                    for tag in UserConfig.SUMMARY_TAGS:
+                        budget = refine_budget(tag, monthly_budget)
+                        summary_list.append(get_summary_detail(tag, categories=categories, budget=budget))
+                    ret_dict[freq] = [freq, summary_list]
+                return ret_dict
 
-        self.summary_actor = SummaryActor(get_top_line_summary(self.trans_actor),
-                                          get_frequency_summaries(self.trans_actor),
-                                          get_category_summaries(self.trans_actor))
+            def get_category_summaries(actor):
+                # returns summary of spending by categories
+                # return a list of lists: [['Total' ['last year', spending, budget, percent spent],
+                #                                 ['last 12', spending, budget, percent spent],
+                #                                           ...                               ],
+                #                          ['Weekly' ['last year', spending, budget, percent spent]]]
+                ret_dict = {}
+                categories = self.cat_actor.get_categories(category_type='expense')
+                for cat in self.cat_state_actor.get_categories_current_state_for('ignore'):
+                    try:
+                        categories.remove(cat)
+                    except ValueError:  # there could be categories not in data frame that are in database
+                        pass
+                for cat in categories:
+                    summary_list = [get_columns_for_spending_summary()]
+                    monthly_budget = self.get_budget_for(category=cat)
+                    for tag in UserConfig.SUMMARY_TAGS:
+                        budget = refine_budget(tag, monthly_budget)
+                        summary_list.append(get_summary_detail(tag, categories=[cat], budget=budget))
+                    ret_dict[cat] = [cat, summary_list]
+                return ret_dict
+
+            self.summary_actor = SummaryActor(get_top_line_summary(self.trans_actor),
+                                              get_frequency_summaries(self.trans_actor),
+                                              get_category_summaries(self.trans_actor))
 
 
         # calc for summary table
