@@ -17,7 +17,7 @@ class FileUpload(object):
         self.file_info = None
         if file is not None:
             self.file_info = [file.filename, file.uploaded_timestamp, file.data]
-        self.trans_df_actor = None
+        self.trans_df = None
         if self.file_info is not None:
             if '.csv' in self.file_info[0]:
                 self.trans_df = pd.read_csv(BytesIO(self.file_info[2]))
