@@ -16,13 +16,12 @@ def login():
     default_user.set_password('time_flies!!!!')
     db.session.add(default_user)
     db.session.commit()
-    """
 
     default_user = User(username='jessie', email='j@bibbbo.com')
     default_user.set_password('time_flies!!!!')
     db.session.add(default_user)
     db.session.commit()
-
+    """
 
     if current_user.is_authenticated:
         return redirect(url_for('index'))
