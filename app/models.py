@@ -3,6 +3,8 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from flask_login import UserMixin
 import datetime
 from sqlalchemy.sql import func
+from sqlalchemy import UniqueConstraint
+
 
 class User(UserMixin, db.Model):
     __tablename__ = 'user'
@@ -21,16 +23,20 @@ class User(UserMixin, db.Model):
     def check_password(self, password):
         return check_password_hash(self.password_hash, password)
 
+
 @login.user_loader
 def load_user(id):
     return User.query.get(int(id))
+
 
 class StateLookup(db.Model):
     __tablename__ = 'state_lookup'
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
-    state = db.Column(db.String(64), index=True, unique=True)
+    state = db.Column(db.String(64), index=True)
     description = db.Column(db.Text)
+    __table_args__ = (UniqueConstraint('user_id', 'state', name='_user_state_uc'),)
+
 
 class CategoryState(db.Model):
     __tablename__ = 'category_state'
@@ -40,6 +46,7 @@ class CategoryState(db.Model):
     state = db.Column(db.Integer, db.ForeignKey('state_lookup.id'))
     comment = db.Column(db.Text)
     timestamp = db.Column(db.TIMESTAMP, index=True, default=func.now())
+
 
 class UploadedFile(db.Model):
     __tablename__ = 'uploaded_file'
