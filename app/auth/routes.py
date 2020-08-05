@@ -4,6 +4,7 @@ from app.auth.forms import LoginForm, RegistrationForm
 from flask_login import current_user, login_user, logout_user
 from app.models import User
 from werkzeug.urls import url_parse
+from app.database_access.category_state_access import CategoryStateAccess
 
 
 @app.route('/login', methods=['GET', 'POST'])
@@ -56,5 +57,6 @@ def register():
         db.session.add(user)
         db.session.commit()
         flash('Congratulations, you are now a registered user!')
+        CategoryStateAccess(user.id).set_default_lookup_states()
         return redirect(url_for('login'))
     return render_template('register.html', title='Register', form=form, file_info=["none yet", "not yet"])

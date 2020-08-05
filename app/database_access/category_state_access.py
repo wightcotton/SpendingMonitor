@@ -14,15 +14,16 @@ class CategoryStateAccess(object):
         db.session.commit()
 
     def get_current_state_id(self, category): #-> return current state id for a category
-        csa_record = CategoryState.query.filter_by(user_id=self.user_id, category=category).order_by(
+        cs_record = CategoryState.query.filter_by(user_id=self.user_id, category=category).order_by(
             CategoryState.timestamp.desc()).first()
-        if csa_record:
-            return csa_record.state
+        if cs_record:
+            return cs_record.state
         else:
             return 'include'
 
     def get_current_state(self, category): #-> return current state name for a category
-        current_state_record = CategoryState.query.filter(CategoryState.category == category).order_by(CategoryState.timestamp.desc()).first()
+        current_state_record = CategoryState.query.filter_by(user_id=self.user_id, category=category)\
+            .order_by(CategoryState.timestamp.desc()).first()
         if current_state_record:
             return self.get_lookup_state(current_state_record.state)
         else:
@@ -30,7 +31,8 @@ class CategoryStateAccess(object):
 
     def get_categories_current_state(self): #-> [[state, [category, category], [state, [category, category]]
         ret = []
-        for cat in db.session.query(CategoryState.category).distinct().all():
+        for csr in CategoryState.query.filter_by(user_id=self.user_id).distinct().all():
+            cat = csr.category
             state = db.session.query(StateLookup).filter(StateLookup.id == self.get_current_state_id(cat)).first().state
             ret.append((cat[0], state))
         return ret
@@ -56,10 +58,11 @@ class CategoryStateAccess(object):
             filter(CategoryState.category == category).order_by(CategoryState.timestamp.desc()).all()
 
     def delete_category_states(self, category=None, state_id=None):
+        category_state_records = []
         if category:
-            category_state_records = CategoryState.query.filter_by(category=category).all()
+            category_state_records = CategoryState.query.filter_by(user_id=self.user_id, category=category).all()
         elif state_id:
-            category_state_records = CategoryState.query.filter_by(state=state_id).all()
+            category_state_records = CategoryState.query.filter_by(user_id=self.user_id, state=state_id).all()
         for r in category_state_records:
             db.session.delete(r)
         db.session.commit()
@@ -78,6 +81,9 @@ class CategoryStateAccess(object):
             state_record = StateLookup(user_id=self.user_id, state=state, description='initial load')
             db.session.add(state_record)
             db.session.commit()
+
+    def set_default_lookup_states(self):
+        self.set_lookup_states(['examine', 'fix', 'ignore', 'include'])
 
     def get_lookup_states(self): #-> list of all records from lookup table
         return StateLookup.query.filter_by(user_id=self.user_id).all()
