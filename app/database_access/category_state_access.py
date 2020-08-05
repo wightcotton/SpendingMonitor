@@ -34,7 +34,7 @@ class CategoryStateAccess(object):
         for csr in CategoryState.query.filter_by(user_id=self.user_id).distinct().all():
             cat = csr.category
             state = db.session.query(StateLookup).filter(StateLookup.id == self.get_current_state_id(cat)).first().state
-            ret.append((cat[0], state))
+            ret.append((cat, state))
         return ret
 
     def get_categories_by_current_state(self):
