@@ -101,6 +101,8 @@ def frequency_categories(frequency):
 
 @app.route('/', methods=['GET', 'POST'])
 def home():
+    if current_user.is_authenticated:
+        return redirect(url_for('index'))
     return render_template('home.html')
 
 

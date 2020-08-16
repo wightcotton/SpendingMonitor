@@ -29,4 +29,4 @@ class RegistrationForm(FlaskForm):
         if user is not None:
             raise ValidationError('Please use a different email address.')
         if email.data not in invited_users:
-            raise ValidationError('must be invited to register')
+            raise ValidationError('this site is currently by invitation only. request one from spendgoodly@gmail.com')
