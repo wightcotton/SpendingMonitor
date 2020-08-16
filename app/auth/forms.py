@@ -24,5 +24,9 @@ class RegistrationForm(FlaskForm):
 
     def validate_email(self, email):
         user = User.query.filter_by(email=email.data).first()
+        invited_users = ['robbie@robbie-king.com',
+                         'jessieking26@gmail.com']
         if user is not None:
             raise ValidationError('Please use a different email address.')
+        if email.data not in invited_users:
+            raise ValidationError('must be invited to register')

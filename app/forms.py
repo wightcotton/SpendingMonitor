@@ -20,13 +20,6 @@ class FileAdminForm(FlaskForm):
     delete_all = SubmitField('delete all')
 
 
-class HomeForm(FlaskForm):
-    category = SelectField('Category')
-    month = SelectField('Month')
-    year = SelectField('Year')
-    submit = SubmitField('Select')
-
-
 class MonthlyDetailForm(FlaskForm):
     pass
 
