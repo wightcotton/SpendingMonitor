@@ -1,7 +1,7 @@
 from flask import render_template, redirect, url_for, request, session, flash
 from app import app
 from config import Config
-from app.forms import UploadForm, HomeForm, FileAdminForm, CategorySummaryForm, StateAdminForm
+from app.forms import UploadForm, FileAdminForm, CategorySummaryForm, StateAdminForm
 from flask_login import current_user, login_required
 from app.info_request_interface import InfoRequestHandler
 from werkzeug.utils import secure_filename
@@ -100,12 +100,15 @@ def frequency_categories(frequency):
 
 
 @app.route('/', methods=['GET', 'POST'])
+def home():
+    return render_template('home.html')
+
+
 @app.route('/index', methods=['GET', 'POST'])
 @login_required
 def index():
     if 'categories_to_be_examined' not in session:
         session['categories_to_be_examined'] = []
-    form = HomeForm()
     info_requester = InfoRequestHandler(current_user.id)
     file_info = info_requester.get_file_details()
     if not file_info:
