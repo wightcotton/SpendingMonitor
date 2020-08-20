@@ -1,4 +1,6 @@
 from flask import render_template, redirect, url_for, request, session, flash
+
+
 from app import app
 from config import Config
 from app.forms import UploadForm, FileAdminForm, CategorySummaryForm, StateAdminForm
@@ -18,7 +20,7 @@ def categories():
     info_requester = InfoRequestHandler(current_user.id)
     file_info = info_requester.get_file_details()
     if not file_info:
-        return redirect(url_for('upload_file'))  # someday need to abstract this
+        return redirect(url_for('upload_file', on_error=False))  # someday need to abstract this
     return render_template('categories.html',
                            file_info=[file_info[0], file_info[1]],
                            title='Categories',
@@ -33,7 +35,7 @@ def category(cat):
     info_requester = InfoRequestHandler(current_user.id)
     file_info = info_requester.get_file_details()
     if not file_info:
-        return redirect(url_for('upload_file'))  # someday need to abstract this
+        return redirect(url_for('upload_file'), on_error=False)  # someday need to abstract this
     if not info_requester.is_category_included(category=cat):
         flash('category is no longer in the dataset')
         return redirect(request.referrer)
@@ -68,7 +70,7 @@ def file_admin():
     info_requester = InfoRequestHandler(current_user.id)
     file_info = info_requester.get_file_details()
     if not file_info:
-        return redirect(url_for('upload_file'))  # someday need to abstract this
+        return redirect(url_for('upload_file'), on_error=False)  # someday need to abstract this
     form.files.choices = [(f.id, f.filename + "; " + str(f.uploaded_timestamp)) for f in
                           info_requester.get_source_list()]
     if request.method == 'POST':
@@ -78,7 +80,7 @@ def file_admin():
             info_requester.delete_source([int(form.files.data)])
         elif form.delete_all.data:
             info_requester.delete_all_sources()
-            return redirect(url_for('upload_file'))
+            return redirect(url_for('upload_file'), on_error=False)
         return redirect(url_for('index'))
     return render_template('file_admin.html',
                            title='files...',
@@ -114,7 +116,7 @@ def index():
     info_requester = InfoRequestHandler(current_user.id)
     file_info = info_requester.get_file_details()
     if not file_info:
-        return redirect(url_for('upload_file'))  # someday need to abstract this
+        return redirect(url_for('upload_file'), on_error=False)  # someday need to abstract this
     return render_template('index.html',
                            file_info=[file_info[0], file_info[1]],
                            title='Home',
@@ -174,7 +176,7 @@ def spending_analysis():
     info_requester = InfoRequestHandler(current_user.id)
     file_info = info_requester.get_file_details()
     if not file_info:
-        return redirect(url_for('upload_file'))  # someday need to abstract this
+        return redirect(url_for('upload_file'), on_error=False)  # someday need to abstract this
     return render_template('spending_analysis.html',
                            file_info=[file_info[0], file_info[1]],
                            title='Home',
@@ -190,7 +192,7 @@ def state_admin():
     info_requester = InfoRequestHandler(current_user.id)
     file_info = info_requester.get_file_details()
     if not file_info:
-        return redirect(url_for('upload_file'))  # someday need to abstract this
+        return redirect(url_for('upload_file'), on_error=False)  # someday need to abstract this
     if request.method == 'POST':
         if form.new_state.data:
             info_requester.add_lookup_state(state=form.new_state.data, desc=form.new_state_description.data)
@@ -211,7 +213,7 @@ def summary_tag_items(summary_tag):
     info_requester = InfoRequestHandler(current_user.id)
     file_info = info_requester.get_file_details()
     if not file_info:
-        return redirect(url_for('upload_file'))  # someday need to abstract this
+        return redirect(url_for('upload_file'), on_error=False)  # someday need to abstract this
     return render_template('summary_tag_items.html',
                            title=summary_tag,
                            file_info=file_info,
@@ -230,11 +232,24 @@ def summary_tag_categories(summary_tag):
                            metadata=info_requester.get_category_metadata_list(categories=categories_for_summary_tag))
 
 
-@app.route('/upload_file', methods=['GET', 'POST'])
+@app.route('/upload_file/<on_error>', methods=['GET', 'POST'])
 @login_required
-def upload_file():
+def upload_file(on_error):
     form = UploadForm()
-    info_requester = InfoRequestHandler(current_user.id)
+    if form.validate_on_submit():
+        filename = secure_filename(form.file.data.filename)
+        data = form.file.data.read()
+        try:
+            info_requester = InfoRequestHandler(current_user.id):
+
+        file_id = info_requester.add_new_file([filename, data])
+        info_requester.set_recent_file_details([file_id])
+        return redirect(url_for('index'))
+    try:
+        info_requester = InfoRequestHandler(current_user.id)
+    except ValueError:
+        return render_template('upload_file.html', title='Upload file with budget data', form=form,
+                               file_info=file_info)
     file_info = info_requester.get_file_details()
     if form.validate_on_submit():
         filename = secure_filename(form.file.data.filename)
@@ -249,3 +264,6 @@ def upload_file():
 # helpers
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in Config.ALLOWED_EXTENSIONS
+
+
+
